@@ -32,12 +32,14 @@ public struct PostureJudge {
     public var baseline: PoseMetrics
     public var preferences: Preferences
     public var enabled = Set(Issue.allCases)
+    public var profile: PersonalProfile?
     private var trackers: [Issue:Tracker] = [:]
     private var lastFrame: Double?
     private var lastAlerts: [Issue:Double] = [:]
     private var lastAnyAlert: Double?
     private let smoothing: Bool
-    public init(baseline: PoseMetrics, preferences: Preferences = Preferences(), smoothing: Bool = true) {
+    public init(baseline: PoseMetrics, preferences: Preferences = Preferences(), smoothing: Bool = true, profile: PersonalProfile? = nil) {
+        self.profile = profile?.validated.flatMap { $0.matches(baseline) ? $0 : nil }
         self.baseline = baseline; self.preferences = preferences.validated; self.smoothing = smoothing
     }
     public mutating func resetPending() { trackers.removeAll(); lastFrame = nil }
@@ -57,7 +59,7 @@ public struct PostureJudge {
             let alpha = smoothing ? 1-exp(-max(0,dt)/0.8) : 1
             t.filtered = t.filtered.map { $0 + alpha*(deviation-$0) } ?? deviation
             deviations[issue] = t.filtered
-            let entry = issue.entryThreshold(sensitivity:preferences.sensitivity)
+            let entry = profile.flatMap { $0.matches(baseline) ? $0 : nil }?.threshold(for:issue,sensitivity:preferences.sensitivity) ?? issue.entryThreshold(sensitivity:preferences.sensitivity)
             let threshold = entry * (t.active ? 0.55 : 1)
             if muted { t.badSince = nil; t.goodSince = nil; t.active = false }
             else if (t.filtered ?? 0) > threshold {

@@ -5,11 +5,12 @@ import PostureCore
 struct MainView: View {
     @ObservedObject var model: AppModel
     @State private var privacyPrompt = false
+    @State private var selectedTab = 0
     var body: some View {
-        TabView {
-            dashboard.tabItem { Label("状态与校准", systemImage: "figure.seated.side") }
-            settings.tabItem { Label("设置", systemImage: "slider.horizontal.3") }
-            validation.tabItem { Label("验证与限制", systemImage: "checkmark.shield") }
+        TabView(selection:$selectedTab) {
+            dashboard.tabItem { Label("状态与校准", systemImage: "figure.seated.side") }.tag(0)
+            settings.tabItem { Label("设置", systemImage: "slider.horizontal.3") }.tag(1)
+            validation.tabItem { Label("验证与限制", systemImage: "checkmark.shield") }.tag(2)
         }
         .padding(20).frame(minWidth: 720, minHeight: 700)
         .alert("开启摄像头监测？", isPresented: $privacyPrompt) {
@@ -81,13 +82,26 @@ struct MainView: View {
                 Text((model.backgroundBlur ? "应用背景模糊已开启。" + (model.capturing && model.showPreview && !model.previewTargetVisible ? "尚未确认人物轮廓，预览全幅模糊或留空。" : "") : "应用背景模糊已关闭，显示摄像头画面；可使用系统摄像头效果。") + "不录像、不保存。")
                     .font(.caption).foregroundStyle(.secondary)
                 Text(model.reason).foregroundStyle(.secondary).textSelection(.enabled)
+                if model.adaptation != nil {
+                    AdaptationView(model:model)
+                } else {
+                    GroupBox(model.hasPersonalAdaptation ? "个人适配" : "首次使用 · 找到自己的提醒边界") {
+                        HStack {
+                            Text("记录舒适参考，再试几个自然动作；明确确认后才应用。约1–2分钟，随时可取消。")
+                                .font(.callout).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("开始个人适配") {model.startAdaptation()}.disabled(!model.capturing || model.calibrating)
+                        }.padding(6)
+                    }
+                }
+                if !model.adaptationMessage.isEmpty {Text(model.adaptationMessage).font(.callout).foregroundStyle(.secondary)}
                 if model.calibrating { ProgressView(value: model.calibrationProgress); Text("保持舒适姿势，直到稳定采样满10秒。调整屏幕后需重校准。").font(.caption) }
-                GroupBox("提醒边界 · 相对个人参考姿势") {
+                if model.adaptation == nil { GroupBox("提醒边界 · 相对个人参考姿势") {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("100% 为提醒线；超过后持续 \(Int(model.preferences.dwell)) 秒才形成事件。80% 起标为接近，仅用于提示。")
                             .font(.caption).foregroundStyle(.secondary)
                         ForEach(Issue.allCases, id: \.self) { issue in
-                            ThresholdRow(issue:issue,reading:model.readings[issue],threshold:issue.entryThreshold(sensitivity:model.preferences.sensitivity),unavailable: !model.enabled.contains(issue) ? "已关闭" : model.calibrating ? "校准中" : model.baseline?[issue] == nil ? "等待校准" : "不可判断")
+                            ThresholdRow(issue:issue,reading:model.readings[issue],threshold:model.effectiveThreshold(issue),unavailable: !model.enabled.contains(issue) ? "已关闭" : model.calibrating ? "校准中" : model.baseline?[issue] == nil ? "等待校准" : "不可判断")
                         }
                         Text("显示的是估计变化和工程提醒线，不是健康评分或损伤临界值。恢复到提醒线的55%以内并稳定3秒后，偏离事件才会消退，避免边界附近反复跳变。")
                             .font(.caption).foregroundStyle(.secondary)
@@ -95,7 +109,8 @@ struct MainView: View {
                             .font(.caption)
                     }.padding(8)
                 }
-                if model.baseline == nil {
+                }
+                if model.baseline == nil && model.adaptation == nil {
                     Text("校准前：让背部和双脚有支撑，肩膀放松、上臂自然靠近身体，正面看屏幕；不要刻意挺胸或夹肩。校准只记录你选择的参考姿势，不能验证它是否健康。")
                         .font(.callout).foregroundStyle(.secondary)
                 }
@@ -129,7 +144,7 @@ struct MainView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Picker("同类冷却", selection: $model.preferences.cooldown) { ForEach([300.0,600,1200], id: \.self) { Text("\(Int($0/60))分钟").tag($0) } }
                 Picker("灵敏度", selection: $model.preferences.sensitivity) { Text("低").tag(1.4); Text("标准").tag(1.0); Text("高").tag(0.7) }
-                Text("当前提醒线：头部 \(Issue.headDown.formatted(Issue.headDown.entryThreshold(sensitivity:model.preferences.sensitivity))) · 左右 \(Issue.lean.formatted(Issue.lean.entryThreshold(sensitivity:model.preferences.sensitivity))) · 肩线 \(Issue.shoulders.formatted(Issue.shoulders.entryThreshold(sensitivity:model.preferences.sensitivity)))。均相对校准参考，非医学标准。")
+                Text("当前提醒线：头部 \(Issue.headDown.formatted(model.effectiveThreshold(.headDown))) · 左右 \(Issue.lean.formatted(model.effectiveThreshold(.lean))) · 肩线 \(Issue.shoulders.formatted(model.effectiveThreshold(.shoulders)))。均相对校准参考，非医学标准。")
                     .font(.caption).foregroundStyle(.secondary)
                 ForEach(Issue.allCases, id: \.self) { issue in
                     Toggle(issue.title, isOn: Binding(get: { model.enabled.contains(issue) }, set: { if $0 { model.enabled.insert(issue) } else { model.enabled.remove(issue) }; model.save() }))
@@ -139,6 +154,12 @@ struct MainView: View {
                 Toggle("独立活动提醒", isOn: $model.activityEnabled)
                 Picker("提醒间隔", selection: $model.preferences.activityInterval) { ForEach([1800.0,2700,3600], id: \.self) { Text("\(Int($0/60))分钟").tag($0) } }
                 Text("停止摄像头后仍可计时。离开画面不自动计作完成活动。").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("个人适配") {
+                Text("通过舒适参考与自然动作估算个人提醒线；这是数值校准，不是模型训练或医学极限测试。")
+                Button("重新进行个人适配") {selectedTab=0; model.startAdaptation()}.disabled(!model.capturing || model.calibrating)
+                Text(model.personalProfile == nil ? "当前使用默认提醒线。" : "已应用个人提醒线；灵敏度在个人线基础上调整。")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("本地数据") {
                 Text("仅保存偏好和数值基线；不保存影像、关键点轨迹或历史。手动启动，不随登录启动。")
@@ -173,7 +194,7 @@ struct MainView: View {
     }
 }
 
-private struct ThresholdRow: View {
+struct ThresholdRow: View {
     let issue: Issue
     let reading: ThresholdReading?
     let threshold: Double

@@ -11,7 +11,8 @@ let package = Package(
         .executableTarget(name: "PostureProbe", dependencies: ["PostureVision"]),
         .executableTarget(name: "PosturePal", dependencies: ["PostureCore", "PostureVision"]),
         .testTarget(name: "PostureCoreTests", dependencies: ["PostureCore"]),
-        .testTarget(name: "PostureVisionTests", dependencies: ["PostureVision"])
+        .testTarget(name: "PostureVisionTests", dependencies: ["PostureVision"]),
+        .testTarget(name: "PostureAppTests", dependencies: ["PosturePal"])
     ],
     swiftLanguageModes: [.v5]
 )
