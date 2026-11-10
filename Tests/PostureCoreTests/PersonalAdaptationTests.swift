@@ -97,6 +97,20 @@ final class PersonalAdaptationTests: XCTestCase {
         XCTAssertEqual(s.step,.shoulders)
         XCTAssertNil(s.profile?.thresholds[.lean])
     }
+    func testRecordingRejectionDistinguishesDirectionNoiseAndSmallChange() throws {
+        var s=AdaptationSession(preferences:Preferences()); reference(&s)
+        hold(&s,PoseMetrics(headPitch:-0.2,lateral:0,shoulderTilt:0),at:13)
+        XCTAssertFalse(s.record())
+        let direction=try XCTUnwrap(s.recordFeedback)
+        hold(&s,PoseMetrics(headPitch:0.01,lateral:0,shoulderTilt:0),at:17)
+        XCTAssertFalse(s.record())
+        let small=try XCTUnwrap(s.recordFeedback)
+        XCTAssertNotEqual(direction,small)
+        for n in 0...15 {s.update(PoseMetrics(headPitch:n%2 == 0 ? 0.08 : 0.20,lateral:0,shoulderTilt:0),now:21+Double(n)*0.2)}
+        XCTAssertFalse(s.record())
+        XCTAssertNotEqual(s.recordFeedback,small)
+        s.skip();XCTAssertNil(s.recordFeedback)
+    }
     func testAdjustmentsAreBoundedAndResetExperienceTimers() {
         var s=AdaptationSession(preferences:Preferences()); reference(&s)
         for _ in 0..<5 {s.skip()}

@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 import PostureCore
 @testable import PosturePal
 
@@ -82,6 +83,73 @@ final class AdaptationIntegrationTests: XCTestCase {
             let reopened=AppModel(defaults:defaults,notificationCenter:nil);defer {reopened.shutdown()}
             XCTAssertFalse(reopened.enabled.contains(.headForward))
             XCTAssertEqual(reopened.enabled,[.headDown])
+        }
+    }
+    func testRecordAdaptationPublishesUpdatedStepToSwiftUI() async throws {
+        try await MainActor.run {
+            let name="local.posturepal.tests.\(UUID().uuidString)"; let defaults=UserDefaults(suiteName:name)!
+            defer {defaults.removePersistentDomain(forName:name)}
+            var now=100.0
+            let model=AppModel(defaults:defaults,notificationCenter:nil,time:{now}); defer {model.shutdown()}
+            model.requested=true; model.capturing=true
+            let zero=PoseMetrics(headPitch:0,lateral:0,shoulderTilt:0)
+            model.metrics=zero; model.subjectBox=SubjectBox(x:0.3,y:0.3,width:0.2,height:0.2)
+            model.startAdaptation()
+            for n in 0...60 {
+                now=100+Double(n)*0.2
+                model.consume(CaptureFrame(metrics:zero,points:[],reason:"参考",timestamp:now))
+            }
+            XCTAssertEqual(model.adaptation?.step,.headDown)
+            var updates=0
+            let subscription=model.$adaptation.sink { _ in updates += 1 }
+            for n in 0...15 {
+                now=113+Double(n)*0.2
+                model.consume(CaptureFrame(metrics:PoseMetrics(headPitch:0.14,lateral:0,shoulderTilt:0),points:[],reason:"低头",timestamp:now))
+            }
+            XCTAssertEqual(model.adaptation?.step,.headDown)
+            let beforeRecord=updates
+            model.recordAdaptation()
+            XCTAssertEqual(model.adaptation?.step,.leanFirst)
+            XCTAssertEqual(model.adaptation?.profile?.thresholds[.headDown] ?? 0,0.14,accuracy:0.001)
+            XCTAssertGreaterThan(updates,beforeRecord)
+            _=subscription
+        }
+    }
+    func testRejectedRecordingReasonSurvivesNextCameraFrames() async throws {
+        try await MainActor.run {
+            let name="local.posturepal.tests.\(UUID().uuidString)"; let defaults=UserDefaults(suiteName:name)!
+            defer {defaults.removePersistentDomain(forName:name)}
+            var now=100.0
+            let model=AppModel(defaults:defaults,notificationCenter:nil,time:{now}); defer {model.shutdown()}
+            model.requested=true; model.capturing=true
+            let zero=PoseMetrics(headPitch:0,lateral:0,shoulderTilt:0)
+            model.metrics=zero; model.subjectBox=SubjectBox(x:0.3,y:0.3,width:0.2,height:0.2)
+            model.startAdaptation()
+            for n in 0...60 {
+                now=100+Double(n)*0.2
+                model.consume(CaptureFrame(metrics:zero,points:[],reason:"参考",timestamp:now))
+            }
+            for n in 0...15 {
+                now=113+Double(n)*0.2
+                model.consume(CaptureFrame(metrics:PoseMetrics(headPitch:n%2 == 0 ? 0.08 : 0.20,lateral:0,shoulderTilt:0),points:[],reason:"低头",timestamp:now))
+            }
+            XCTAssertEqual(model.adaptation?.actionProgress,1)
+            model.recordAdaptation()
+            XCTAssertEqual(model.adaptation?.step,.headDown)
+            let rejection=try XCTUnwrap(model.adaptation?.recordFeedback)
+            XCTAssertFalse(rejection.isEmpty)
+            for n in 1...5 {
+                now=116+Double(n)*0.2
+                model.consume(CaptureFrame(metrics:PoseMetrics(headPitch:0.14,lateral:0,shoulderTilt:0),points:[],reason:"低头",timestamp:now))
+                XCTAssertEqual(model.adaptation?.recordFeedback,rejection)
+            }
+            for n in 6...25 {
+                now=116+Double(n)*0.2
+                model.consume(CaptureFrame(metrics:PoseMetrics(headPitch:0.14,lateral:0,shoulderTilt:0),points:[],reason:"低头",timestamp:now))
+            }
+            model.recordAdaptation()
+            XCTAssertEqual(model.adaptation?.step,.leanFirst)
+            XCTAssertNil(model.adaptation?.recordFeedback)
         }
     }
     func testActivityTimerPausesDuringGuide() async {

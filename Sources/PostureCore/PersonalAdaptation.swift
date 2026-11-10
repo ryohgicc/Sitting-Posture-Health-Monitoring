@@ -73,6 +73,7 @@ public struct AdaptationSession {
     public private(set) var readings: [Issue:ThresholdReading] = [:]
     public private(set) var referenceProgress=0.0
     public private(set) var actionProgress=0.0
+    public private(set) var recordFeedback: String?
     public private(set) var message="保持自然舒适姿势；不适时停止，任何动作都可以跳过。"
     public private(set) var notes: [Issue:String] = [:]
     public let preferences: Preferences
@@ -125,17 +126,24 @@ public struct AdaptationSession {
     }
     @discardableResult public mutating func record() -> Bool {
         guard let issue=step.issue, let baseline=profile?.baseline, baseline[issue] != nil, let first=samples.first, let last=samples.last,
-              last.0-first.0 >= 2, samples.count >= 8 else {message="有效稳定采样不足2秒，请保持片刻或跳过。";return false}
+              last.0-first.0 >= 2, samples.count >= 8 else {return rejectRecording("尚未记录：有效采样不足2秒，请保持片刻后重试，或跳过。")}
         let raw=samples.compactMap {$0.1.signedDeviation(from:baseline,issue:issue)}.sorted()
-        guard raw.count >= 8, Double(raw.count)/Double(samples.count) >= 0.9 else {message="此项不可见或采样不足，请重试或跳过。";return false}
+        guard raw.count >= 8, Double(raw.count)/Double(samples.count) >= 0.9 else {return rejectRecording("尚未记录：此项不可见或有效采样不足，请调整入镜后重试，或跳过。")}
         let signed=quantile(raw,0.5)
         let delta=issue == .headDown || issue == .shrug || issue == .headForward ? max(0,signed) : abs(signed)
-        guard quantile(raw,0.9)-quantile(raw,0.1) < issue.threshold*0.35,
-              delta > max(issue.threshold*0.3,(noise[issue] ?? 0)*3) else {message="变化太小、方向不符或仍在移动，无法区分动作与抖动。请自然重试或跳过。";return false}
+        guard quantile(raw,0.9)-quantile(raw,0.1) < issue.threshold*0.35 else {
+            return rejectRecording("尚未记录：最近采样仍在变化。请在希望提醒的位置保持不动约3秒，再点记录；不必加大动作。")
+        }
+        if (issue == .headDown || issue == .shrug || issue == .headForward) && signed < 0 {
+            return rejectRecording("尚未记录：检测到反方向变化，请按本步动作说明自然重试，或跳过。")
+        }
+        guard delta > max(issue.threshold*0.3,(noise[issue] ?? 0)*3) else {
+            return rejectRecording("尚未记录：变化太小，暂时无法与静止抖动区分。可按舒适幅度重试，或跳过；不需要追过100%提醒线。")
+        }
         if step == .leanFirst {firstLean=signed; advance(to:.leanOther); return true}
         var proposed=delta
         if step == .leanOther {
-            guard let firstLean, firstLean*signed < 0 else {message="请先回到参考，再向刚才相反的一侧偏移；也可以跳过左右项目。";return false}
+            guard let firstLean, firstLean*signed < 0 else {return rejectRecording("尚未记录：请先回到参考，再向刚才相反的一侧偏移；也可以跳过左右项目。")}
             proposed=min(abs(firstLean),delta)
         }
         profile?.thresholds[issue]=min(issue.threshold*1.4,max(issue.threshold*0.6,proposed/preferences.sensitivity))
@@ -156,7 +164,13 @@ public struct AdaptationSession {
         notes[issue]="手动调整，待确认"; resetDemo()
     }
     public mutating func review() {guard step == .experience else {return};step = .review}
+    private mutating func rejectRecording(_ explanation: String) -> Bool {
+        recordFeedback=explanation
+        message=explanation
+        return false
+    }
     private mutating func advance(to step: AdaptationStep) {
+        recordFeedback=nil
         self.step=step; samples=[];actionProgress=0;readings=[:]
         message=step.instruction
         if step == .experience {resetDemo()}

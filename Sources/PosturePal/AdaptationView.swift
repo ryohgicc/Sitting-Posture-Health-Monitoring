@@ -21,8 +21,15 @@ struct AdaptationView: View {
                     } else if let issue=session.step.issue {
                         ThresholdRow(issue:issue,reading:session.readings[issue],threshold:session.profile?.threshold(for:issue,sensitivity:session.preferences.sensitivity) ?? issue.threshold,unavailable:"此项不可判断")
                         ProgressView(value:session.actionProgress)
+                        Text(session.actionProgress >= 1 ? "已取得至少2秒采样，点击后检查动作方向和稳定性。" : "正在采样，保持自然动作至少2秒。")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if let feedback=session.recordFeedback {
+                            Label(feedback,systemImage:"exclamationmark.circle.fill")
+                                .font(.callout).foregroundStyle(.orange)
+                                .accessibilityLabel(feedback)
+                        }
                         HStack {
-                            Button("这是我希望提醒的位置 · 记录2秒") {model.recordAdaptation()}
+                            Button(session.recordFeedback == nil ? "记录当前位置并继续" : "重新记录并继续") {model.recordAdaptation()}
                                 .buttonStyle(.borderedProminent).disabled(session.actionProgress < 1)
                             Button("跳过此项，保留默认线") {model.skipAdaptation()}
                         }
