@@ -12,6 +12,7 @@ struct MainView: View {
             settings.tabItem { Label("设置", systemImage: "slider.horizontal.3") }.tag(1)
             validation.tabItem { Label("验证与限制", systemImage: "checkmark.shield") }.tag(2)
         }
+        .onChange(of:selectedTab) {model.setDashboardVisible(selectedTab == 0)}
         .padding(20).frame(minWidth: 720, minHeight: 700)
         .alert("开启摄像头监测？", isPresented: $privacyPrompt) {
             Button("取消", role: .cancel) {}

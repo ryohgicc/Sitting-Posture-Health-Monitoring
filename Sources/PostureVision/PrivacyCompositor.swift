@@ -15,7 +15,7 @@ public final class PrivacyCompositor {
     private let context = CIContext(options: [.cacheIntermediates: false])
     public init() {}
 
-    public func render(image: CGImage, target: SubjectBox?, blurEnabled: Bool = true) -> PrivatePreview {
+    public func render(image: CGImage, target: SubjectBox?, blurEnabled: Bool = true, detectedFaces: [SubjectBox]? = nil) -> PrivatePreview {
         if !blurEnabled { return PrivatePreview(image:image,targetVisible:false,excludedFaces:0) }
         let source = CIImage(cgImage: image), extent = source.extent
         let background = source.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: max(28, extent.width*0.065)]).cropped(to: extent)
@@ -26,8 +26,10 @@ public final class PrivacyCompositor {
         do {
             let handler = VNImageRequestHandler(cgImage: image, orientation: .up)
             let request = VNGeneratePersonInstanceMaskRequest()
-            let faces = VNDetectFaceRectanglesRequest()
-            try handler.perform([request, faces])
+            let faces = detectedFaces == nil ? VNDetectFaceRectanglesRequest() : nil
+            var requests: [VNRequest]=[request]
+            if let faces {requests.append(faces)}
+            try handler.perform(requests)
             guard let observation = request.results?.first else { return fallback() }
             var coverage: [Int: Double] = [:]
             // Probe mask values at points safely inside the selected face. A generic
@@ -58,16 +60,14 @@ public final class PrivacyCompositor {
             // Erode uncertain silhouette edges; exclude other faces even if instance
             // segmentation merged a bystander with the foreground person.
             mask = mask.applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: 3])
-            let detected=faces.results ?? []
-            let boxes=detected.map { face -> SubjectBox in
+            let boxes=detectedFaces ?? (faces?.results ?? []).map { face -> SubjectBox in
                 let b=face.boundingBox
                 return SubjectBox(x:b.minX,y:b.minY,width:b.width,height:b.height)
             }
             guard let targetIndex=PrivacySelection.targetFace(target:target,faces:boxes) else {return fallback()}
-            let others=detected.indices.filter {$0 != targetIndex}.map {detected[$0]}
-            for face in others {
-                let b = face.boundingBox
-                let rect = CGRect(x:(b.minX-b.width*0.35)*extent.width,y:(b.minY-b.height*0.35)*extent.height,width:b.width*1.7*extent.width,height:b.height*1.7*extent.height)
+            let others=boxes.indices.filter {$0 != targetIndex}.map {boxes[$0]}
+            for b in others {
+                let rect = CGRect(x:(b.x-b.width*0.35)*extent.width,y:(b.y-b.height*0.35)*extent.height,width:b.width*1.7*extent.width,height:b.height*1.7*extent.height)
                 let black = CIImage(color: .black).cropped(to: rect)
                 mask = black.composited(over: mask)
             }

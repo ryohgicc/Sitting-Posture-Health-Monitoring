@@ -10,6 +10,7 @@ public struct AnalyzedPose {
     public let status: SubjectStatus
     public let newLock: Bool
     public let reason: String
+    public let faceBoxes: [SubjectBox]
     public let faces: Int
     public let bodies: Int
 }
@@ -24,11 +25,13 @@ public final class VisionAnalyzer {
     public func analyze(handler: VNImageRequestHandler, width: Double, height: Double, now: Double, image: CGImage? = nil) throws -> AnalyzedPose {
         let faceRequest = VNDetectFaceRectanglesRequest()
         try handler.perform([faceRequest])
-        let faces = (faceRequest.results ?? []).filter { $0.confidence > 0.6 }
+        let detectedFaces=faceRequest.results ?? []
+        let privacyBoxes=detectedFaces.map {SubjectBox(x:$0.boundingBox.minX,y:$0.boundingBox.minY,width:$0.boundingBox.width,height:$0.boundingBox.height)}
+        let faces = detectedFaces.filter { $0.confidence > 0.6 }
         let boxes = faces.map { SubjectBox(x:$0.boundingBox.minX,y:$0.boundingBox.minY,width:$0.boundingBox.width,height:$0.boundingBox.height) }
         let selected = tracker.select(boxes,now:now)
         func output(_ metrics: PoseMetrics? = nil, points: [CGPoint] = [], box: SubjectBox? = nil, reason: String, bodies: Int = 0) -> AnalyzedPose {
-            AnalyzedPose(metrics:metrics,points:points,faceBox:box,status:selected.status,newLock:selected.newLock,reason:reason,faces:faces.count,bodies:bodies)
+            AnalyzedPose(metrics:metrics,points:points,faceBox:box,status:selected.status,newLock:selected.newLock,reason:reason,faceBoxes:privacyBoxes,faces:faces.count,bodies:bodies)
         }
         guard let index = selected.index else {
             let message: String

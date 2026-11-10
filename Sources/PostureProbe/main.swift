@@ -5,7 +5,7 @@ import PostureVision
 // No camera, network or image writes. Reads only a user-specified image.
 let args = Array(CommandLine.arguments.dropFirst())
 guard let path=args.first, let image=NSImage(contentsOfFile:path) else {
-    fputs("Usage: PostureProbe image-path [--screenshot] [--multi] [--require-shoulders] [--require-shrug] [--require-head-forward] [--privacy]\n",stderr); exit(2)
+    fputs("Usage: PostureProbe image-path [--screenshot] [--multi] [--require-shoulders] [--require-shrug] [--require-head-forward] [--privacy] [--benchmark] [--independent-faces]\n",stderr); exit(2)
 }
 var rect=NSRect(origin:.zero,size:image.size)
 guard let cg=image.cgImage(forProposedRect:&rect,context:nil,hints:nil) else { exit(2) }
@@ -47,11 +47,36 @@ func verifyPrivacy(source: CGImage, processed: CGImage, target: CGRect, backgrou
     return faceRatio > 0.55 && backgroundRatio < 0.25
 }
 
+if args.contains("--benchmark") {
+    // Same supplied image, transient processing only. Warm up model before timing.
+    let compositor=PrivacyCompositor()
+    var last=try analyze(source,now:0)
+    _ = compositor.render(image:source,target:last.faceBox,detectedFaces:args.contains("--independent-faces") ? nil : last.faceBoxes)
+    let count=20
+    func wallTime() -> Double {ProcessInfo.processInfo.systemUptime}
+    var inference=[Double](),preview=[Double]()
+    for n in 1...count {
+        try autoreleasepool {
+            let start=wallTime()
+            last=try analyze(source,now:Double(n)*0.2)
+            let end=wallTime();inference.append((end-start)*1000)
+            _ = compositor.render(image:source,target:last.faceBox,detectedFaces:args.contains("--independent-faces") ? nil : last.faceBoxes)
+            preview.append((wallTime()-end)*1000)
+        }
+    }
+    func stats(_ values:[Double])->String {
+        let sorted=values.sorted()
+        return String(format:"mean=%.2fms median=%.2fms p95=%.2fms",values.reduce(0,+)/Double(values.count),sorted[values.count/2],sorted[Int(Double(values.count-1)*0.95)])
+    }
+    print("benchmark frames=\(count) size=\(source.width)x\(source.height) inference \(stats(inference)) privacy \(stats(preview))")
+    exit(last.metrics?.headPitch == nil ? 1 : 0)
+}
+
 let result=try analyze(source,now:0)
 if args.contains("--privacy") {
     let compositor = PrivacyCompositor()
     let start = ProcessInfo.processInfo.systemUptime
-    let privateFrame = compositor.render(image:source,target:result.faceBox)
+    let privateFrame = compositor.render(image:source,target:result.faceBox,detectedFaces:args.contains("--independent-faces") ? nil : result.faceBoxes)
     print("privacy ms=\((ProcessInfo.processInfo.systemUptime-start)*1000)")
     let fallback = compositor.render(image:source,target:nil)
     print("privacy target=\(privateFrame.targetVisible) otherFaces=\(privateFrame.excludedFaces) rendered=\(privateFrame.image != nil) fallback=\(fallback.image != nil && !fallback.targetVisible)")
@@ -80,7 +105,7 @@ if args.contains("--multi") {
     if args.contains("--require-shrug"), multi.metrics?[.shrug] == nil {exit(1)}
     if args.contains("--require-head-forward"), multi.metrics?[.headForward] == nil {exit(1)}
     if args.contains("--privacy") {
-        let privacy = PrivacyCompositor().render(image:composite,target:multi.faceBox)
+        let privacy = PrivacyCompositor().render(image:composite,target:multi.faceBox,detectedFaces:args.contains("--independent-faces") ? nil : multi.faceBoxes)
         print("multi privacy target=\(privacy.targetVisible) excludedFaces=\(privacy.excludedFaces)")
         guard privacy.targetVisible, privacy.excludedFaces >= 1,let rendered=privacy.image else {exit(1)}
         let patchBox=CGRect(x:0.06,y:1-0.58-0.16,width:0.09,height:0.16)

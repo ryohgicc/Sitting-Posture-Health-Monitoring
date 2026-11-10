@@ -45,8 +45,11 @@ final class AppModel: ObservableObject {
         }
     }
     private var previewRevision = 0
+    @Published private(set) var windowVisible = false
+    @Published private(set) var dashboardVisible = true
+    var previewProcessingEnabled: Bool {windowVisible && dashboardVisible && showPreview}
     @Published var showOverlay = true
-    @Published var showPreview = true { didSet { camera.setPreviewEnabled(showPreview); if !showPreview { previewImage = nil; previewTargetVisible = false } } }
+    @Published var showPreview = true { didSet { updatePreviewDemand() } }
     @Published var validationMode = true
     private var overlay = OverlayStabilizer()
     private var calibration = CalibrationAccumulator()
@@ -114,6 +117,20 @@ final class AppModel: ObservableObject {
         observers.append(dist.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.locked = true; self?.suspend() } })
         observers.append(dist.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.locked = false; self?.resumeIfWanted() } })
         refreshNotifications()
+    }
+    func setWindowVisible(_ visible: Bool) {
+        guard windowVisible != visible else {return}
+        windowVisible=visible; updatePreviewDemand()
+    }
+    func setDashboardVisible(_ visible: Bool) {
+        guard dashboardVisible != visible else {return}
+        dashboardVisible=visible; updatePreviewDemand()
+    }
+    private func updatePreviewDemand() {
+        previewRevision=camera.setPreviewEnabled(previewProcessingEnabled)
+        if !previewProcessingEnabled {
+            previewImage=nil; previewTargetVisible=false; points=[]; overlay=OverlayStabilizer()
+        }
     }
     func save() {
         cancelAdaptation("设置已修改，个人适配草稿已取消。")
@@ -194,10 +211,14 @@ final class AppModel: ObservableObject {
             reminders.cancel(channel:"posture"); deviations=[:]; readings=[:]; active=[]
         }
         if frame.previewRevision == previewRevision {
-            previewImage=showPreview ? frame.previewImage : nil; previewTargetVisible=showPreview && frame.previewTargetVisible
+            previewImage=previewProcessingEnabled ? frame.previewImage : nil; previewTargetVisible=previewProcessingEnabled && frame.previewTargetVisible
         }
         subjectBox=frame.subjectBox; sourceAspect=frame.sourceAspect
-        metrics = frame.metrics; points = overlay.update(frame.points.map {Point2(x:$0.x,y:$0.y)},now:frame.timestamp).map {CGPoint(x:$0.x,y:$0.y)}; reason = frame.reason
+        metrics = frame.metrics
+        if previewProcessingEnabled && showOverlay {
+            points = overlay.update(frame.points.map {Point2(x:$0.x,y:$0.y)},now:frame.timestamp).map {CGPoint(x:$0.x,y:$0.y)}
+        } else {points=[]; overlay=OverlayStabilizer()}
+        reason = frame.reason
         captureState = frame.metrics == nil ? "暂时看不清" : (baseline == nil ? "等待校准" : frame.metrics?.complete == true ? "监测中" : "部分指标不可用")
         if adaptation != nil {
             if let last=adaptationLastUsable, frame.timestamp-last > 3 {

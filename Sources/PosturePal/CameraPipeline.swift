@@ -30,10 +30,15 @@ final class CameraPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     private var targetResetPending = false
     private var earliestSampleTime = -Double.infinity
     private let previewLock = NSLock()
-    private var previewEnabled = true
+    private var previewEnabled = false
     private var blurEnabled = true
     private var previewRevision = 0
-    func setPreviewEnabled(_ enabled: Bool) { previewLock.lock(); previewEnabled=enabled; previewLock.unlock() }
+    @discardableResult
+    func setPreviewEnabled(_ enabled: Bool) -> Int {
+        previewLock.lock(); defer {previewLock.unlock()}
+        if previewEnabled != enabled {previewEnabled=enabled; previewRevision += 1}
+        return previewRevision
+    }
     func setBackgroundBlur(_ enabled: Bool) -> Int {
         previewLock.lock(); defer {previewLock.unlock()}
         blurEnabled=enabled;previewRevision += 1;return previewRevision
@@ -150,17 +155,19 @@ final class CameraPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         guard now-lastAnalysis >= 0.2, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         lastAnalysis = now
         if frameGeneration != ticket { analyzer.reset(); frameGeneration = ticket }
-        let w=Double(CVPixelBufferGetWidth(buffer)), h=Double(CVPixelBufferGetHeight(buffer))
-        do {
-            let cgImage=imageContext.createCGImage(CIImage(cvPixelBuffer:buffer),from:CGRect(x:0,y:0,width:w,height:h))
-            let result = try analyzer.analyze(handler:VNImageRequestHandler(cvPixelBuffer:buffer,orientation:.up),width:w,height:h,now:now,image:cgImage)
-            guard current(ticket) else { return }
-            let options=previewOptions
-            let processed = options.visible ? cgImage.map { privacy.render(image:$0,target:result.status == .locked ? result.faceBox : nil,blurEnabled:options.blur) } : nil
-            guard current(ticket), ProcessInfo.processInfo.systemUptime-now < 3 else { return }
-            emit(CaptureFrame(previewImage:processed?.image,previewTargetVisible:processed?.targetVisible ?? false,previewRevision:options.revision,metrics:result.metrics,points:result.points,reason:result.reason,timestamp:now,subjectBox:result.faceBox,sourceAspect:w/h,newTarget:result.newLock),ticket)
-        } catch {
-            emit(CaptureFrame(previewRevision:previewOptions.revision,metrics:nil,points:[],reason:"当前画面无法分析，请调整光线或重新锁定。",timestamp:now),ticket)
+        autoreleasepool {
+            let w=Double(CVPixelBufferGetWidth(buffer)), h=Double(CVPixelBufferGetHeight(buffer))
+            do {
+                let cgImage=imageContext.createCGImage(CIImage(cvPixelBuffer:buffer),from:CGRect(x:0,y:0,width:w,height:h))
+                let result = try analyzer.analyze(handler:VNImageRequestHandler(cvPixelBuffer:buffer,orientation:.up),width:w,height:h,now:now,image:cgImage)
+                guard current(ticket) else { return }
+                let options=previewOptions
+                let processed = options.visible ? cgImage.map { privacy.render(image:$0,target:result.status == .locked ? result.faceBox : nil,blurEnabled:options.blur,detectedFaces:result.faceBoxes) } : nil
+                guard current(ticket), ProcessInfo.processInfo.systemUptime-now < 3 else { return }
+                emit(CaptureFrame(previewImage:processed?.image,previewTargetVisible:processed?.targetVisible ?? false,previewRevision:options.revision,metrics:result.metrics,points:result.points,reason:result.reason,timestamp:now,subjectBox:result.faceBox,sourceAspect:w/h,newTarget:result.newLock),ticket)
+            } catch {
+                emit(CaptureFrame(previewRevision:previewOptions.revision,metrics:nil,points:[],reason:"当前画面无法分析，请调整光线或重新锁定。",timestamp:now),ticket)
+            }
         }
     }
 

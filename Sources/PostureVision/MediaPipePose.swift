@@ -6,6 +6,7 @@ import MediaPipeBridge
 /// Serial inference only; neither the adapter nor the runtime writes input frames to disk.
 final class MediaPipePose {
     private var detector: OpaquePointer?
+    private let frameBuffer=RGBAFrameBuffer()
     private(set) var issue: String?
     init() {
         // Bundle for packaged app; executable ancestry for swift run / local development.
@@ -26,15 +27,11 @@ final class MediaPipePose {
         guard let detector else {return []}
         let w=image.width,h=image.height
         guard w > 0, h > 0, w <= 4096, h <= 4096 else {issue="肩部分析画面尺寸无效";return []}
-        var data=[UInt8](repeating:0,count:w*h*4)
-        let rendered=data.withUnsafeMutableBytes { bytes -> Bool in
-            guard let ctx=CGContext(data:bytes.baseAddress,width:w,height:h,bitsPerComponent:8,bytesPerRow:w*4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else {return false}
-            ctx.draw(image,in:CGRect(x:0,y:0,width:w,height:h));return true
-        }
-        guard rendered else {issue="无法准备肩部分析画面";return []}
+        guard frameBuffer.draw(image) else {issue="无法准备肩部分析画面";return []}
+        defer {frameBuffer.clear()}
         var results=[PPBody](repeating:PPBody(),count:3)
         var error=[CChar](repeating:0,count:1024)
-        let count=pp_detect(detector,&data,Int32(w),Int32(h),&results,3,&error,Int32(error.count))
+        let count=pp_detect(detector,frameBuffer.bytes.baseAddress?.assumingMemoryBound(to:UInt8.self),Int32(w),Int32(h),&results,3,&error,Int32(error.count))
         guard count >= 0 else {issue=String(cString:error);return []}
         issue=nil
         func point(_ p: PPPoint) -> Point2? {

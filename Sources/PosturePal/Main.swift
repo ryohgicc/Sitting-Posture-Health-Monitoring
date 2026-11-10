@@ -3,7 +3,7 @@ import AppKit
 import UserNotifications
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNotificationCenterDelegate {
     static var model: AppModel?
     static var showMain: (() -> Void)?
     private var window: NSWindow?
@@ -17,13 +17,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard let model = Self.model else { return }
         if window == nil {
             let w = NSWindow(contentRect: NSRect(x: 0,y: 0,width: 780,height: 820), styleMask: [.titled,.closable,.miniaturizable,.resizable], backing: .buffered, defer: false)
+            w.delegate=self
             w.title = "坐姿搭子"; w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: MainView(model: model))
             w.minSize = NSSize(width: 740,height: 740); w.center(); window = w
         }
+        if window?.isMiniaturized == true {window?.deminiaturize(nil)}
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        updateWindowVisibility()
     }
+    private func updateWindowVisibility() {
+        guard let window else {Self.model?.setWindowVisible(false);return}
+        Self.model?.setWindowVisible(window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible))
+    }
+    func windowDidChangeOcclusionState(_ notification: Notification) {updateWindowVisibility()}
+    func windowDidMiniaturize(_ notification: Notification) {Self.model?.setWindowVisible(false)}
+    func windowDidDeminiaturize(_ notification: Notification) {updateWindowVisibility()}
+    func windowWillClose(_ notification: Notification) {Self.model?.setWindowVisible(false)}
     func applicationWillTerminate(_ notification: Notification) { Self.model?.shutdown() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
