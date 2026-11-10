@@ -47,6 +47,7 @@ public final class VisionAnalyzer {
         }
         let anchors=image.map {pose.bodies(image:$0)} ?? []
         let matched = SubjectAssociation.bodyIndex(for:box,candidates:anchors)
+        var headScale: Double?, span: Double?
         var lateral: Double?, tilt: Double?, gaps: (left:Double,right:Double)?, overlay = [outline]
         if let matched, let l=anchors[matched].leftShoulder, let r=anchors[matched].rightShoulder, let nose=anchors[matched].nose {
             func px(_ p: Point2) -> Point2 { Point2(x:p.x*width,y:(1-p.y)*height) }
@@ -57,14 +58,16 @@ public final class VisionAnalyzer {
                 // Shrug needs a frontal, approximately level head as well as same-body ears.
                 if abs(yaw) < 0.20, let pitch=face.pitch?.doubleValue, abs(pitch) < 0.30,
                    let roll=face.roll?.doubleValue, abs(roll) < 0.15 {
+                    let approach=HeadApproachGeometry(face:box,leftShoulder:l,rightShoulder:r,nose:nose,imageWidth:width,imageHeight:height)
+                    headScale=approach.scaleRatio; span=headScale == nil ? nil : approach.shoulderSpan
                     gaps=ShoulderEarGeometry(leftShoulder:px(l),rightShoulder:px(r),
                         leftEar:anchors[matched].leftEar.map(px),rightEar:anchors[matched].rightEar.map(px),nose:px(nose)).gaps
                 }
                 overlay=[CGPoint(x:l.x,y:l.y),CGPoint(x:r.x,y:r.y),CGPoint(x:nose.x,y:nose.y)]
             }
         }
-        let metrics = PoseMetrics(headPitch:face.pitch?.doubleValue,lateral:lateral,shoulderTilt:tilt,leftEarGap:gaps?.left,rightEarGap:gaps?.right,headRoll:face.roll?.doubleValue)
+        let metrics = PoseMetrics(headPitch:face.pitch?.doubleValue,lateral:lateral,shoulderTilt:tilt,leftEarGap:gaps?.left,rightEarGap:gaps?.right,headRoll:face.roll?.doubleValue,headScale:headScale,shoulderSpan:span,headYaw:face.yaw?.doubleValue)
         let suffix = faces.count > 1 ? "，已忽略背景人脸" : ""
-        return output(metrics.usable ? metrics : nil,points:overlay,box:box,reason:metrics.complete ? "已锁定你，头肩可用（MediaPipe）\(suffix)" : "已锁定你\(suffix)；\(image == nil ? "无法准备肩部画面" : (pose.issue == nil ? "部分头肩指标不可用；双肩抬高需双耳清晰且头部稳定。" : "本地肩部模型不可用，请重新构建应用。"))",bodies:anchors.count)
+        return output(metrics.usable ? metrics : nil,points:overlay,box:box,reason:metrics.complete ? "已锁定你，头肩可用（MediaPipe）\(suffix)" : "已锁定你\(suffix)；\(image == nil ? "无法准备肩部画面" : (pose.issue == nil ? "部分头肩指标不可用；双肩抬高需双耳清晰，头部前移估计需头部和身体稳定。" : "本地肩部模型不可用，请重新构建应用。"))",bodies:anchors.count)
     }
 }

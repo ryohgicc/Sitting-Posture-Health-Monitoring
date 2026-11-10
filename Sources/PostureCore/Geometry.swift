@@ -34,17 +34,31 @@ public struct PoseMetrics: Codable, Sendable {
     public var shoulderTilt: Double?
     public var leftEarGap: Double?
     public var rightEarGap: Double?
+    public var headScale: Double?
+    public var shoulderSpan: Double?
+    public var headYaw: Double?
     public var headRoll: Double?
-    public init(headPitch: Double?, lateral: Double?, shoulderTilt: Double?, leftEarGap: Double? = nil, rightEarGap: Double? = nil, headRoll: Double? = nil) {
+    public init(headPitch: Double?, lateral: Double?, shoulderTilt: Double?, leftEarGap: Double? = nil, rightEarGap: Double? = nil, headRoll: Double? = nil, headScale: Double? = nil, shoulderSpan: Double? = nil, headYaw: Double? = nil) {
         self.headPitch = headPitch.flatMap { $0.isFinite ? $0 : nil }
         self.lateral = lateral.flatMap { $0.isFinite ? $0 : nil }
         self.shoulderTilt = shoulderTilt.flatMap { $0.isFinite ? $0 : nil }
         self.leftEarGap = leftEarGap.flatMap { $0.isFinite && $0 > 0 && $0 < 2 ? $0 : nil }
         self.rightEarGap = rightEarGap.flatMap { $0.isFinite && $0 > 0 && $0 < 2 ? $0 : nil }
         self.headRoll = headRoll.flatMap { $0.isFinite ? $0 : nil }
+        self.headScale = headScale.flatMap { $0.isFinite && $0 > 0.12 && $0 < 0.9 ? $0 : nil }
+        self.shoulderSpan = shoulderSpan.flatMap { $0.isFinite && $0 > 0 && $0 <= 1 ? $0 : nil }
+        self.headYaw = headYaw.flatMap { $0.isFinite ? $0 : nil }
     }
     public subscript(_ issue: Issue) -> Double? {
         switch issue { case .headDown: return headPitch; case .lean: return lateral; case .shoulders: return shoulderTilt
+        case .headForward:
+            guard let headScale, headScale.isFinite, headScale > 0.12, headScale < 0.9,
+                  let shoulderSpan, shoulderSpan.isFinite, shoulderSpan > 0, shoulderSpan <= 1,
+                  let headPitch, headPitch.isFinite, abs(headPitch) < 0.30,
+                  let headRoll, headRoll.isFinite, abs(headRoll) < 0.15,
+                  let headYaw, headYaw.isFinite, abs(headYaw) < 0.20,
+                  lateral?.isFinite == true else {return nil}
+            return headScale
         case .shrug:
             guard let leftEarGap, let rightEarGap, leftEarGap.isFinite, rightEarGap.isFinite,
                   leftEarGap > 0, rightEarGap > 0, leftEarGap < 2, rightEarGap < 2,
@@ -55,6 +69,15 @@ public struct PoseMetrics: Codable, Sendable {
     /// Signed change in the direction being enrolled. Bilateral elevation requires both gaps to shrink.
     public func signedDeviation(from baseline: PoseMetrics, issue: Issue) -> Double? {
         guard let raw=self[issue], let base=baseline[issue], raw.isFinite, base.isFinite else {return nil}
+        if issue == .headForward {
+            guard let span=shoulderSpan, let baseSpan=baseline.shoulderSpan,
+                  abs(span/baseSpan-1) <= 0.08,
+                  let pitch=headPitch, let basePitch=baseline.headPitch, abs(pitch-basePitch) < 0.10,
+                  let roll=headRoll, let baseRoll=baseline.headRoll, abs(roll-baseRoll) < 0.10,
+                  let yaw=headYaw, let baseYaw=baseline.headYaw, abs(yaw-baseYaw) < 0.10,
+                  let lateral, let baseLateral=baseline.lateral, abs(lateral-baseLateral) < 0.10 else {return nil}
+            return raw/base-1
+        }
         guard issue == .shrug else {return raw-base}
         guard let pitch=headPitch, let basePitch=baseline.headPitch,
               let roll=headRoll, let baseRoll=baseline.headRoll,
@@ -68,12 +91,12 @@ public struct PoseMetrics: Codable, Sendable {
 }
 
 public enum Issue: String, CaseIterable, Codable, Sendable {
-    case headDown, lean, shoulders, shrug
+    case headDown, lean, shoulders, shrug, headForward
     public var title: String {
-        switch self { case .headDown: return "头部俯仰"; case .lean: return "头肩横向偏移"; case .shoulders: return "双肩高低差"; case .shrug: return "双肩抬高" }
+        switch self { case .headDown: return "头部俯仰"; case .lean: return "头肩横向偏移"; case .shoulders: return "双肩高低差"; case .shrug: return "双肩抬高"; case .headForward: return "头部前移（估计）" }
     }
     public var threshold: Double {
-        switch self { case .headDown: return 0.20; case .lean: return 0.18; case .shoulders: return 0.14; case .shrug: return 0.08 }
+        switch self { case .headDown: return 0.20; case .lean: return 0.18; case .shoulders: return 0.14; case .shrug: return 0.08; case .headForward: return 0.12 }
     }
 }
 
@@ -94,21 +117,27 @@ public struct CalibrationAccumulator {
             let a = samples.compactMap { $0.1[issue] }.filter(\.isFinite).sorted()
             guard a.count >= 30, Double(a.count)/Double(samples.count) >= 0.9 else { continue }
             let median = a[a.count/2]
-            guard a[Int(Double(a.count-1)*0.9)] - a[Int(Double(a.count-1)*0.1)] < issue.threshold * 0.6 else { continue }
+            let spread=a[Int(Double(a.count-1)*0.9)] - a[Int(Double(a.count-1)*0.1)]
+            let normalizedSpread=issue == .headForward ? spread/median : spread
+            guard normalizedSpread < issue.threshold * 0.6 else { continue }
             values[issue] = median
         }
         guard !values.isEmpty else { return nil }
-        func stable(_ get: (PoseMetrics) -> Double?, tolerance: Double) -> Double? {
+        func stable(_ get: (PoseMetrics) -> Double?, tolerance: Double, relative: Bool = false) -> Double? {
             let sorted=samples.compactMap {get($0.1)}.filter(\.isFinite).sorted()
             guard sorted.count >= 30, Double(sorted.count)/Double(samples.count) >= 0.9,
-                  sorted[Int(Double(sorted.count-1)*0.9)]-sorted[Int(Double(sorted.count-1)*0.1)] < tolerance else {return nil}
+                  (sorted[Int(Double(sorted.count-1)*0.9)]-sorted[Int(Double(sorted.count-1)*0.1)]) / (relative ? sorted[sorted.count/2] : 1) < tolerance else {return nil}
             return sorted[sorted.count/2]
         }
         let left=stable({$0.leftEarGap},tolerance:Issue.shrug.threshold*0.6)
         let right=stable({$0.rightEarGap},tolerance:Issue.shrug.threshold*0.6)
         let roll=stable({$0.headRoll},tolerance:0.08)
         let hasShrug=values[.shrug] != nil && left != nil && right != nil && roll != nil && values[.headDown] != nil
-        return PoseMetrics(headPitch: values[.headDown], lateral: values[.lean], shoulderTilt: values[.shoulders],leftEarGap:hasShrug ? left : nil,rightEarGap:hasShrug ? right : nil,headRoll:roll)
+        let yaw=stable({$0.headYaw},tolerance:0.08)
+        let span=stable({$0.shoulderSpan},tolerance:0.04,relative:true)
+        let hasForward=values[.headForward] != nil && span != nil && yaw != nil && roll != nil && values[.headDown] != nil && values[.lean] != nil
+        return PoseMetrics(headPitch: values[.headDown], lateral: values[.lean], shoulderTilt: values[.shoulders],leftEarGap:hasShrug ? left : nil,rightEarGap:hasShrug ? right : nil,headRoll:roll,
+            headScale:hasForward ? values[.headForward] : nil,shoulderSpan:hasForward ? span : nil,headYaw:yaw)
     }
 }
 

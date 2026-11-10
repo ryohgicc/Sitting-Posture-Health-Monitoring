@@ -88,6 +88,11 @@ final class AppModel: ObservableObject {
             defaults.set(enabled.map(\.rawValue),forKey:"enabled.v1")
             defaults.set(true,forKey:"shrugEnabledMigrated.v1")
         }
+        if !defaults.bool(forKey:"headForwardEnabledMigrated.v1") {
+            enabled.insert(.headForward)
+            defaults.set(enabled.map(\.rawValue),forKey:"enabled.v1")
+            defaults.set(true,forKey:"headForwardEnabledMigrated.v1")
+        }
         if defaults.object(forKey: "activity.v1") != nil { activityEnabled = defaults.bool(forKey: "activity.v1") }
         // Validation mode is explicit: notifications describing posture stay gated until a real trial.
         validationMode = !defaults.bool(forKey: "trialAccepted.v1")

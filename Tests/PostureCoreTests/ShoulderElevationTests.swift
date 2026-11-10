@@ -69,6 +69,7 @@ final class ShoulderElevationTests: XCTestCase {
         XCTAssertFalse(session.record())
         for n in 0...20 {session.update(metrics(0.9,0.9),now:17+Double(n)*0.2)}
         XCTAssertTrue(session.record())
+        session.skip() // New optional head approach step.
         XCTAssertEqual(session.step,.experience)
         XCTAssertEqual(try XCTUnwrap(session.profile?.thresholds[.shrug]),0.1,accuracy:0.0001)
     }

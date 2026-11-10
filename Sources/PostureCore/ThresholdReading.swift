@@ -32,15 +32,17 @@ public struct ThresholdReading: Sendable {
 
 extension Issue {
     public func entryThreshold(sensitivity: Double) -> Double {threshold*sensitivity}
-    public func displayValue(_ value:Double) -> Double {self == .lean || self == .shrug ? value*100 : value*180 / .pi}
+    public func displayValue(_ value:Double) -> Double {self == .lean || self == .shrug || self == .headForward ? value*100 : value*180 / .pi}
     public func formatted(_ value:Double) -> String {
-        String(format:self == .lean || self == .shrug ? "%.1f%% 肩宽" : "%.1f°",displayValue(value))
+        if self == .headForward {return String(format:"%.1f%% 头肩尺度增幅",displayValue(value))}
+        return String(format:self == .lean || self == .shrug ? "%.1f%% 肩宽" : "%.1f°",displayValue(value))
     }
     public var explanation: String {
         switch self {
         case .headDown: return "面部向下俯仰相对参考的增加；不是颈椎角度。"
         case .lean: return "鼻子相对双肩中点的偏移比例变化；不是躯干角度。"
         case .shoulders: return "双肩连线倾斜相对参考的变化，按角度显示；不判断双侧耸肩或圆肩。"
+        case .headForward: return "头部相对双肩的画面尺度比相对参考的增幅；正面估计，不能测颈椎前倾角度，仍可能混淆身体移动。"
         case .shrug: return "两侧肩耳距离相对参考都缩短时取较小变化，按双肩横向间距比例显示；头部位移也可能影响估计。"
         }
     }
@@ -49,6 +51,7 @@ extension Issue {
         case .headDown: return "可放松抬头，检查屏幕是否过低，或换个姿势。"
         case .lean: return "可回到舒适的居中位置，或起身活动。"
         case .shoulders: return "可放松双肩，检查两侧扶手和手臂支撑是否合适。"
+        case .headForward: return "可让头部回到舒适位置，检查屏幕距离和文字大小，避免用力收下巴。"
         case .shrug: return "可放松双肩，检查桌面、扶手高度与前臂支撑。"
         }
     }

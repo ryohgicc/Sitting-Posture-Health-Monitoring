@@ -69,6 +69,21 @@ final class AdaptationIntegrationTests: XCTestCase {
             XCTAssertFalse(reopened.enabled.contains(.lean))
         }
     }
+    func testHeadForwardToggleAddedWithoutChangingOldChoicesAndOffPersists() async {
+        await MainActor.run {
+            let name="local.posturepal.tests.\(UUID().uuidString)"; let defaults=UserDefaults(suiteName:name)!
+            defer {defaults.removePersistentDomain(forName:name)}
+            defaults.set(["headDown"],forKey:"enabled.v1")
+            defaults.set(true,forKey:"shrugEnabledMigrated.v1")
+            let model=AppModel(defaults:defaults,notificationCenter:nil);defer {model.shutdown()}
+            XCTAssertTrue(model.enabled.contains(.headForward))
+            XCTAssertFalse(model.enabled.contains(.shrug));XCTAssertFalse(model.enabled.contains(.lean))
+            model.enabled.remove(.headForward);model.save()
+            let reopened=AppModel(defaults:defaults,notificationCenter:nil);defer {reopened.shutdown()}
+            XCTAssertFalse(reopened.enabled.contains(.headForward))
+            XCTAssertEqual(reopened.enabled,[.headDown])
+        }
+    }
     func testActivityTimerPausesDuringGuide() async {
         await MainActor.run {
             let name="local.posturepal.tests.\(UUID().uuidString)"; let defaults=UserDefaults(suiteName:name)!
