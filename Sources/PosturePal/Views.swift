@@ -82,18 +82,22 @@ struct MainView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Text(model.reason).foregroundStyle(.secondary).textSelection(.enabled)
                 if model.calibrating { ProgressView(value: model.calibrationProgress); Text("保持舒适姿势，直到稳定采样满10秒。调整屏幕后需重校准。").font(.caption) }
-                GroupBox("相对参考姿态的变化（不是健康评分）") {
-                    VStack(spacing: 10) {
+                GroupBox("提醒边界 · 相对个人参考姿势") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("100% 为提醒线；超过后持续 \(Int(model.preferences.dwell)) 秒才形成事件。80% 起标为接近，仅用于提示。")
+                            .font(.caption).foregroundStyle(.secondary)
                         ForEach(Issue.allCases, id: \.self) { issue in
-                            HStack {
-                                Text(issue.title).frame(width: 100, alignment: .leading)
-                                if let value = model.deviations[issue] {
-                                    ProgressView(value: min(2, value/(issue.threshold*model.preferences.sensitivity)), total: 2).tint(model.active.contains(issue) ? .orange : .mint)
-                                    Text(model.active.contains(issue) ? "持续偏离" : "观察中").frame(width: 80)
-                                } else { Text(model.baseline == nil ? "等待校准" : "不可判断").foregroundStyle(.secondary); Spacer() }
-                            }
+                            ThresholdRow(issue:issue,reading:model.readings[issue],threshold:issue.entryThreshold(sensitivity:model.preferences.sensitivity),unavailable: !model.enabled.contains(issue) ? "已关闭" : model.calibrating ? "校准中" : model.baseline?[issue] == nil ? "等待校准" : "不可判断")
                         }
+                        Text("显示的是估计变化和工程提醒线，不是健康评分或损伤临界值。恢复到提醒线的55%以内并稳定3秒后，偏离事件才会消退，避免边界附近反复跳变。")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(model.muted ? "提醒已静默：只显示变化，不累计偏离提醒。" : model.validationMode ? "验证模式：达到持续时间只显示事件，不发姿态系统通知。" : "姿态通知已启用；同类冷却和系统专注模式仍可能让通知暂不出现。")
+                            .font(.caption)
                     }.padding(8)
+                }
+                if model.baseline == nil {
+                    Text("校准前：让背部和双脚有支撑，肩膀放松、上臂自然靠近身体，正面看屏幕；不要刻意挺胸或夹肩。校准只记录你选择的参考姿势，不能验证它是否健康。")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
                 Text(model.latestNotice).font(.callout).textSelection(.enabled)
                 HStack {
@@ -115,6 +119,8 @@ struct MainView: View {
                 Picker("持续偏离", selection: $model.preferences.dwell) { ForEach([10.0,20,30], id: \.self) { Text("\(Int($0))秒").tag($0) } }
                 Picker("同类冷却", selection: $model.preferences.cooldown) { ForEach([300.0,600,1200], id: \.self) { Text("\(Int($0/60))分钟").tag($0) } }
                 Picker("灵敏度", selection: $model.preferences.sensitivity) { Text("低").tag(1.4); Text("标准").tag(1.0); Text("高").tag(0.7) }
+                Text("当前提醒线：头部 \(Issue.headDown.formatted(Issue.headDown.entryThreshold(sensitivity:model.preferences.sensitivity))) · 左右 \(Issue.lean.formatted(Issue.lean.entryThreshold(sensitivity:model.preferences.sensitivity))) · 肩线 \(Issue.shoulders.formatted(Issue.shoulders.entryThreshold(sensitivity:model.preferences.sensitivity)))。均相对校准参考，非医学标准。")
+                    .font(.caption).foregroundStyle(.secondary)
                 ForEach(Issue.allCases, id: \.self) { issue in
                     Toggle(issue.title, isOn: Binding(get: { model.enabled.contains(issue) }, set: { if $0 { model.enabled.insert(issue) } else { model.enabled.remove(issue) }; model.save() }))
                 }
@@ -148,8 +154,66 @@ struct MainView: View {
                     Button("我已试用，启用姿态系统通知") { model.acceptTrial(); model.requestNotifications() }.buttonStyle(.borderedProminent)
                     Text("这只是你选择开启提醒，不会把应用标记为通过医学或完整产品验收。").font(.caption)
                 } else { Label("姿态系统通知已启用，仍属试用检测", systemImage: "bell") }
+                Link("参考：OSHA 舒适、有支撑的工作姿势", destination:URL(string:"https://www.osha.gov/etools/computer-workstations/positions/")!)
+                Text("这些指南支持舒适、放松、有支撑并经常改变姿势，不提供本应用的11.5°、18%肩宽或8°检测线。头肩正面画面无法评价腰背、骨盆、二郎腿或圆肩。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text("资源占用与60分钟能耗、锁屏/唤醒、摄像头占用和真实通知仍需设备实测。校准和可用率不代表检测准确率。")
             }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct ThresholdRow: View {
+    let issue: Issue
+    let reading: ThresholdReading?
+    let threshold: Double
+    let unavailable: String
+    private var tint: Color {
+        guard let reading else {return .secondary}
+        switch reading.phase {
+        case .below: return .mint
+        case .approaching, .counting: return .orange
+        case .active: return .red
+        case .recovering: return .blue
+        case .muted: return .secondary
+        }
+    }
+    var body: some View {
+        VStack(alignment:.leading,spacing:6) {
+            HStack(alignment:.firstTextBaseline) {
+                Text(issue.title).font(.headline)
+                Spacer()
+                Text(reading?.label ?? unavailable).foregroundStyle(tint).font(.callout.bold()).monospacedDigit()
+            }
+            HStack {
+                Text(reading.map {"当前变化 \(issue.formatted($0.deviation))"} ?? "当前变化 —")
+                Spacer()
+                Text("提醒线 \(issue.formatted(threshold))")
+            }.font(.caption).monospacedDigit()
+            GeometryReader { proxy in
+                ZStack(alignment:.leading) {
+                    Capsule().fill(Color.secondary.opacity(0.15))
+                    if let reading {
+                        Capsule().fill(tint).frame(width:proxy.size.width*min(1,max(0,reading.ratio)/1.5))
+                    }
+                    Rectangle().fill(Color.primary).frame(width:2,height:12).offset(x:proxy.size.width/1.5-1)
+                }
+            }.frame(height:8).accessibilityLabel("提醒线100%")
+            HStack {
+                Text(reading.map {"提醒线的 \($0.formattedRatio)"} ?? "尚无有效读数")
+                Spacer()
+                Text("┃100% 提醒线")
+            }.font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+            Text(issue.explanation).font(.caption).foregroundStyle(.secondary)
+            if let reading {
+                if reading.phase == .active || reading.phase == .counting {
+                    Text(issue.actionHint).font(.caption).foregroundStyle(tint)
+                }
+                if reading.phase == .active || reading.phase == .recovering {
+                    Text("恢复线 \(issue.formatted(reading.recoveryThreshold))，稳定3秒。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }

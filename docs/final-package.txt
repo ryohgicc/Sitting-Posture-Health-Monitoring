@@ -2,14 +2,14 @@
 Building for production...
 [0/5] Write sources
 [2/5] Write swift-version--58304C5D6DBC2206.txt
-[4/6] Compiling PostureVision MediaPipePose.swift
-[5/9] Compiling PostureProbe main.swift
-[5/10] Write Objects.LinkFileList
+[4/6] Compiling PostureCore Geometry.swift
+[5/9] Compiling PostureVision MediaPipePose.swift
+[5/9] Write Objects.LinkFileList
 [6/10] Linking PostureProbe
 [8/10] Compiling PosturePal AppModel.swift
 [8/10] Write Objects.LinkFileList
 [9/10] Linking PosturePal
-Build complete! (3.79s)
+Build complete! (5.41s)
 /Users/apple/Documents/Codex/2026-11-09/n-j-d/outputs/PosturePal/dist/坐姿搭子.app/Contents/Resources/Models/libmediapipe.dylib: replacing existing signature
 /Users/apple/Documents/Codex/2026-11-09/n-j-d/outputs/PosturePal/dist/坐姿搭子.app/Contents/Info.plist: OK
 /Users/apple/Documents/Codex/2026-11-09/n-j-d/outputs/PosturePal/dist/坐姿搭子.app: replacing existing signature

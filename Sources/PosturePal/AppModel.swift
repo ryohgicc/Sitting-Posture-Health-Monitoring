@@ -19,6 +19,7 @@ final class AppModel: ObservableObject {
     @Published var baseline: PoseMetrics?
     @Published var calibrating = false
     @Published var calibrationProgress = 0.0
+    @Published var readings: [Issue:ThresholdReading] = [:]
     @Published var deviations: [Issue:Double] = [:]
     @Published var active = Set<Issue>()
     @Published var notificationState = "尚未请求"
@@ -95,7 +96,7 @@ final class AppModel: ObservableObject {
         defaults.set(try? JSONEncoder().encode(preferences), forKey: "preferences.v1")
         defaults.set(enabled.map(\.rawValue), forKey: "enabled.v1")
         defaults.set(activityEnabled, forKey: "activity.v1")
-        judge?.preferences = preferences; judge?.enabled = enabled; judge?.resetPending()
+        judge?.preferences = preferences; judge?.enabled = enabled; judge?.resetPending(); readings = [:]; deviations = [:]; active = []
         clock.interval = preferences.activityInterval
         reminders.cancel(channel: "posture")
         if !activityEnabled { reminders.cancel(channel: "activity") }
@@ -120,12 +121,12 @@ final class AppModel: ObservableObject {
         guard requested else { return }; pauseUntil = now+1800; suspend(); reason = "检测暂停30分钟，到期且已解锁时自动恢复摄像头。"
     }
     func resume() { pauseUntil = nil; resumeIfWanted() }
-    func snooze() { reminders.clearPending(); snoozeUntil = now+600; judge?.resetPending(); latestNotice = "提醒静默10分钟，摄像头仍工作。" }
-    func unsnooze() { snoozeUntil = nil; judge?.resetPending() }
+    func snooze() { reminders.clearPending(); snoozeUntil = now+600; judge?.resetPending(); readings = [:]; deviations = [:]; active = []; latestNotice = "提醒静默10分钟，摄像头仍工作。" }
+    func unsnooze() { snoozeUntil = nil; judge?.resetPending(); readings = [:]; deviations = [:]; active = [] }
     func clearLive() {
         overlay = OverlayStabilizer()
         previewImage = nil; previewTargetVisible = false
-        points = []; subjectBox = nil; metrics = nil; deviations = [:]; active = []; judge?.resetPending(); lastFrame = nil; watchdog.stop(); reminders.clearPending()
+        points = []; subjectBox = nil; metrics = nil; judge?.resetPending(); readings = [:]; deviations = [:]; active = []; lastFrame = nil; watchdog.stop(); reminders.clearPending()
         calibrating = false; calibrationProgress = 0; calibrationStarted = nil
     }
     func relock(pick: Point2? = nil) {
@@ -135,12 +136,12 @@ final class AppModel: ObservableObject {
         defaults.removeObject(forKey:"baseline.v1"); baseline=nil; judge=nil
         calibration=CalibrationAccumulator(); calibrating=false; calibrationProgress=0
         previewImage=nil; previewTargetVisible=false
-        points=[]; subjectBox=nil; deviations=[:]; active=[]; reminders.cancel(channel:"posture")
+        points=[]; subjectBox=nil; deviations=[:]; readings=[:]; active=[]; reminders.cancel(channel:"posture")
         reason="正在重新锁定，请保持位置；锁定后重新校准。"
     }
     func beginCalibration() {
         guard capturing else { return }; calibration = CalibrationAccumulator(); calibrating = true; calibrationProgress = 0; calibrationStarted = now
-        judge?.resetPending(); active = []; reminders.cancel(channel: "posture"); reason = "保持舒适稳定姿态约10秒；不必挺胸或夹肩。"
+        judge?.resetPending(); readings = [:]; deviations = [:]; active = []; reminders.cancel(channel: "posture"); reason = "保持舒适稳定姿态约10秒；不必挺胸或夹肩。"
     }
     func clearCalibration() {
         defaults.removeObject(forKey: "baseline.v1"); baseline = nil; judge = nil; clearLive()
@@ -149,7 +150,7 @@ final class AppModel: ObservableObject {
     }
     func acceptTrial() {
         validationMode = false; defaults.set(true, forKey: "trialAccepted.v1")
-        judge?.resetPending(); latestNotice = "已由你启用姿态通知，仍属于试用检测。"
+        judge?.resetPending(); readings = [:]; deviations = [:]; active = []; latestNotice = "已由你启用姿态通知，仍属于试用检测。"
     }
     private func consume(_ frame: CaptureFrame) {
         guard requested, livePermitted, capturing, frame.timestamp.isFinite, now-frame.timestamp >= 0, now-frame.timestamp < 3 else { return }
@@ -159,7 +160,7 @@ final class AppModel: ObservableObject {
             overlay = OverlayStabilizer()
             defaults.removeObject(forKey:"baseline.v1"); baseline=nil; judge=nil
             calibration=CalibrationAccumulator(); calibrating=false; calibrationProgress=0
-            reminders.cancel(channel:"posture"); deviations=[:]; active=[]
+            reminders.cancel(channel:"posture"); deviations=[:]; readings=[:]; active=[]
         }
         if frame.previewRevision == previewRevision {
             previewImage=showPreview ? frame.previewImage : nil; previewTargetVisible=showPreview && frame.previewTargetVisible
@@ -184,7 +185,7 @@ final class AppModel: ObservableObject {
         guard judge != nil else { return }
         judge?.enabled = enabled
         let verdict = judge!.update(frame.metrics, now: frame.timestamp, muted: muted)
-        active = verdict.active; deviations = verdict.deviations
+        active = verdict.active; deviations = verdict.deviations; readings = verdict.readings
         if verdict.active.isEmpty { reminders.cancel(channel: "posture") }
         if !verdict.alerts.isEmpty {
             let labels = verdict.alerts.sorted { $0.rawValue < $1.rawValue }.map(\.title).joined(separator: "、")
@@ -194,11 +195,11 @@ final class AppModel: ObservableObject {
     }
     private func tick() {
         if let until = pauseUntil, now >= until { pauseUntil = nil; resumeIfWanted() }
-        if let until = snoozeUntil, now >= until { snoozeUntil = nil; judge?.resetPending() }
+        if let until = snoozeUntil, now >= until { snoozeUntil = nil; judge?.resetPending(); readings = [:]; deviations = [:]; active = [] }
         if capturing, watchdog.age(now: now) > 3 {
             overlay = OverlayStabilizer()
             previewImage = nil; previewTargetVisible = false
-            metrics = nil; points = []; subjectBox = nil; active = []; deviations = [:]; judge?.resetPending()
+            metrics = nil; points = []; subjectBox = nil; active = []; deviations = [:]; judge?.resetPending(); readings = [:]; deviations = [:]; active = []
             captureState = "暂时看不清"; reason = "画面中断，姿态计时已清空。"
             reminders.cancel(channel: "posture")
             if watchdog.expired(now: now) { requested = false; camera.stop(); capturing = false; watchdog.stop(); captureState = "摄像头故障"; reason = "持续未收到画面，请重新开启。" }

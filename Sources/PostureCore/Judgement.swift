@@ -25,6 +25,7 @@ public struct Verdict {
     public var active: Set<Issue>
     public var alerts: Set<Issue>
     public var deviations: [Issue: Double]
+    public var readings: [Issue:ThresholdReading]
 }
 
 public struct PostureJudge {
@@ -45,6 +46,7 @@ public struct PostureJudge {
         if dt > 2.5 || dt < 0 { trackers.removeAll() }
         lastFrame = now
         var active = Set<Issue>(), candidates = Set<Issue>(), deviations: [Issue:Double] = [:]
+        var readings: [Issue:ThresholdReading] = [:]
         for issue in Issue.allCases {
             guard enabled.contains(issue), let raw = metrics?[issue], let base = baseline[issue], raw.isFinite, base.isFinite else {
                 trackers[issue] = nil; continue
@@ -55,7 +57,8 @@ public struct PostureJudge {
             let alpha = smoothing ? 1-exp(-max(0,dt)/0.8) : 1
             t.filtered = t.filtered.map { $0 + alpha*(deviation-$0) } ?? deviation
             deviations[issue] = t.filtered
-            let threshold = issue.threshold * preferences.sensitivity * (t.active ? 0.55 : 1)
+            let entry = issue.entryThreshold(sensitivity:preferences.sensitivity)
+            let threshold = entry * (t.active ? 0.55 : 1)
             if muted { t.badSince = nil; t.goodSince = nil; t.active = false }
             else if (t.filtered ?? 0) > threshold {
                 t.goodSince = nil; t.badSince = t.badSince ?? now
@@ -68,6 +71,14 @@ public struct PostureJudge {
                 active.insert(issue)
                 if now-(lastAlerts[issue] ?? -.infinity) >= preferences.cooldown { candidates.insert(issue) }
             }
+            let phase: ThresholdPhase
+            let elapsed: Double
+            if muted {phase = .muted;elapsed=0}
+            else if t.active, let since=t.goodSince {phase = .recovering;elapsed=max(0,now-since)}
+            else if t.active {phase = .active;elapsed=t.badSince.map {max(0,now-$0)} ?? 0}
+            else if let since=t.badSince {phase = .counting;elapsed=max(0,now-since)}
+            else {phase = (t.filtered ?? 0)/entry >= 0.8-1e-12 ? .approaching : .below;elapsed=0}
+            readings[issue]=ThresholdReading(deviation:t.filtered ?? 0,threshold:entry,phase:phase,elapsed:elapsed,dwell:preferences.dwell)
             trackers[issue] = t
         }
         if muted || now-(lastAnyAlert ?? -.infinity) < 60 { candidates.removeAll() }
@@ -75,6 +86,6 @@ public struct PostureJudge {
             lastAnyAlert = now
             for i in candidates { lastAlerts[i] = now }
         }
-        return Verdict(active: active, alerts: candidates, deviations: deviations)
+        return Verdict(active: active, alerts: candidates, deviations: deviations, readings: readings)
     }
 }
