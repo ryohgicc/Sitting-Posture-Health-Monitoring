@@ -21,6 +21,7 @@ final class PersonalAdaptationTests: XCTestCase {
         XCTAssertTrue(s.record())
         hold(&s,PoseMetrics(headPitch:0,lateral:0,shoulderTilt:0.1),at:25)
         XCTAssertTrue(s.record())
+        s.skip() // New optional bilateral shoulder step.
         XCTAssertEqual(s.step,.experience)
         let p=try XCTUnwrap(s.profile)
         XCTAssertEqual(p.threshold(for:.headDown),0.15,accuracy:0.001)
@@ -98,7 +99,7 @@ final class PersonalAdaptationTests: XCTestCase {
     }
     func testAdjustmentsAreBoundedAndResetExperienceTimers() {
         var s=AdaptationSession(preferences:Preferences()); reference(&s)
-        for _ in 0..<3 {s.skip()}
+        for _ in 0..<4 {s.skip()}
         hold(&s,PoseMetrics(headPitch:0.4,lateral:0,shoulderTilt:0),at:13)
         s.adjust(.headDown,factor:1.15)
         XCTAssertTrue(s.readings.isEmpty)

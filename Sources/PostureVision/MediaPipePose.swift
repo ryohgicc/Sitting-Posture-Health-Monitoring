@@ -41,6 +41,6 @@ final class MediaPipePose {
             guard p.visibility >= 0.7,p.presence >= 0.7,p.x.isFinite,p.y.isFinite,p.x>=0,p.x<=1,p.y>=0,p.y<=1 else {return nil}
             return Point2(x:Double(p.x),y:1-Double(p.y))
         }
-        return results.prefix(Int(count)).map {BodyAnchor(nose:point($0.nose),leftShoulder:point($0.leftShoulder),rightShoulder:point($0.rightShoulder))}
+        return results.prefix(Int(count)).map {BodyAnchor(nose:point($0.nose),leftShoulder:point($0.leftShoulder),rightShoulder:point($0.rightShoulder),leftEar:point($0.leftEar),rightEar:point($0.rightEar))}
     }
 }

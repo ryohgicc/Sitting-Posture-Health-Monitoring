@@ -101,7 +101,7 @@ struct MainView: View {
                         Text("100% 为提醒线；超过后持续 \(Int(model.preferences.dwell)) 秒才形成事件。80% 起标为接近，仅用于提示。")
                             .font(.caption).foregroundStyle(.secondary)
                         ForEach(Issue.allCases, id: \.self) { issue in
-                            ThresholdRow(issue:issue,reading:model.readings[issue],threshold:model.effectiveThreshold(issue),unavailable: !model.enabled.contains(issue) ? "已关闭" : model.calibrating ? "校准中" : model.baseline?[issue] == nil ? "等待校准" : "不可判断")
+                            ThresholdRow(issue:issue,reading:model.readings[issue],threshold:model.effectiveThreshold(issue),unavailable: !model.enabled.contains(issue) ? "已关闭" : model.calibrating ? "校准中" : model.baseline?[issue] == nil ? (issue == .shrug ? "需双耳入镜后重新校准" : "等待校准") : "不可判断")
                         }
                         Text("显示的是估计变化和工程提醒线，不是健康评分或损伤临界值。恢复到提醒线的55%以内并稳定3秒后，偏离事件才会消退，避免边界附近反复跳变。")
                             .font(.caption).foregroundStyle(.secondary)
@@ -144,7 +144,9 @@ struct MainView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Picker("同类冷却", selection: $model.preferences.cooldown) { ForEach([300.0,600,1200], id: \.self) { Text("\(Int($0/60))分钟").tag($0) } }
                 Picker("灵敏度", selection: $model.preferences.sensitivity) { Text("低").tag(1.4); Text("标准").tag(1.0); Text("高").tag(0.7) }
-                Text("当前提醒线：头部 \(Issue.headDown.formatted(model.effectiveThreshold(.headDown))) · 左右 \(Issue.lean.formatted(model.effectiveThreshold(.lean))) · 肩线 \(Issue.shoulders.formatted(model.effectiveThreshold(.shoulders)))。均相对校准参考，非医学标准。")
+                Text("当前提醒线：头部 \(Issue.headDown.formatted(model.effectiveThreshold(.headDown))) · 头肩横向偏移 \(Issue.lean.formatted(model.effectiveThreshold(.lean))) · 双肩高低差 \(Issue.shoulders.formatted(model.effectiveThreshold(.shoulders)))。双肩抬高 \(Issue.shrug.formatted(model.effectiveThreshold(.shrug)))。均相对校准参考，非医学标准。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("双肩抬高为试用检测：两侧肩耳距离都缩短才计时，默认线为8%肩宽。需重新校准并保持双耳可见；可独立关闭。")
                     .font(.caption).foregroundStyle(.secondary)
                 ForEach(Issue.allCases, id: \.self) { issue in
                     Toggle(issue.title, isOn: Binding(get: { model.enabled.contains(issue) }, set: { if $0 { model.enabled.insert(issue) } else { model.enabled.remove(issue) }; model.save() }))
@@ -179,8 +181,8 @@ struct MainView: View {
                 Text("头部使用 Apple Vision，肩部使用随应用附带的 MediaPipe 本地模型。无需联网或 Python。")
                 Text("有效画面：\(model.validFrames) / \(model.totalFrames) 帧（当前开启周期）")
                 if model.totalFrames > 0 { Text(String(format: "完整指标可用率 %.1f%%", Double(model.validFrames)/Double(model.totalFrames)*100)) }
-                Text("1. 开启预览，让头部和双肩完整入镜，稳定校准约10秒。\n2. 正常办公5分钟，完整指标可用率目标≥90%。\n3. 低头、左右偏斜、肩线变化各测试5次，每次保持超过所设持续时间（当前\(Int(model.preferences.dwell))秒）再恢复。\n4. 正常打字、喝水、转头、后靠共30分钟，误事件目标≤1次。\n5. 未通过的指标请关闭并记录；不能因此宣称整个首版已经通过验收。")
-                Text("头部俯仰使用面部角度，按系统定义的向下方向比较个人基线；实际方向表现与误报仍待验证，提示保持中性。圆肩、二郎腿、骨盆和腰椎不在检测范围内。已锁定目标后会忽略背景人脸；遮挡、目标丢失或多人靠近无法区分时暂停，需重新锁定。").foregroundStyle(.secondary)
+                Text("1. 开启预览，让头部和双肩完整入镜，稳定校准约10秒。\n2. 正常办公5分钟，完整指标可用率目标≥90%。\n3. 低头、头肩横向偏移、双肩高低差、双肩抬高各测试5次，每次保持超过所设持续时间（当前\(Int(model.preferences.dwell))秒）再恢复。\n4. 正常打字、喝水、转头、后靠共30分钟，误事件目标≤1次。\n5. 未通过的指标请关闭并记录；不能因此宣称整个首版已经通过验收。")
+                Text("头部俯仰使用面部角度，按系统定义的向下方向比较个人基线；实际方向表现与误报仍待验证，提示保持中性。双肩抬高根据同一目标的双耳和双肩估计，耳朵遮挡或头部运动明显时不可判断，也不能区分所有头部位移。圆肩、二郎腿、骨盆和腰椎不在检测范围内。已锁定目标后会忽略背景人脸；遮挡、目标丢失或多人靠近无法区分时暂停，需重新锁定。").foregroundStyle(.secondary)
                 if model.validationMode {
                     Button("我已试用，启用姿态系统通知") { model.acceptTrial(); model.requestNotifications() }.buttonStyle(.borderedProminent)
                     Text("这只是你选择开启提醒，不会把应用标记为通过医学或完整产品验收。").font(.caption)

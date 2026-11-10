@@ -68,8 +68,11 @@ public struct BodyAnchor: Sendable {
     public let nose: Point2?
     public let leftShoulder: Point2?
     public let rightShoulder: Point2?
-    public init(nose: Point2?, leftShoulder: Point2?, rightShoulder: Point2?) {
+    public let leftEar: Point2?
+    public let rightEar: Point2?
+    public init(nose: Point2?, leftShoulder: Point2?, rightShoulder: Point2?, leftEar: Point2? = nil, rightEar: Point2? = nil) {
         self.nose = nose; self.leftShoulder = leftShoulder; self.rightShoulder = rightShoulder
+        self.leftEar = leftEar; self.rightEar = rightEar
     }
 }
 public enum SubjectAssociation {

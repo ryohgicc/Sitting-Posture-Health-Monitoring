@@ -12,7 +12,7 @@ final class AdaptationIntegrationTests: XCTestCase {
             let profile=PersonalProfile(baseline:baseline,thresholds:[.headDown:0.15])
             defaults.set(try JSONEncoder().encode(baseline),forKey:"baseline.v1")
             defaults.set(try JSONEncoder().encode(profile),forKey:"personalProfile.v1")
-            var time=100.0
+            let time=100.0
             let model=AppModel(defaults:defaults,notificationCenter:nil,time:{time}); defer {model.shutdown()}
             model.capturing=true; model.metrics=baseline; model.subjectBox=SubjectBox(x:0.3,y:0.3,width:0.2,height:0.2)
             model.startAdaptation(); XCTAssertNotNil(model.adaptation)
@@ -53,6 +53,20 @@ final class AdaptationIntegrationTests: XCTestCase {
             XCTAssertNotNil(model.adaptation)
             time=103.2;model.consume(CaptureFrame(metrics:zero,points:[],reason:"恢复",timestamp:time))
             XCTAssertNil(model.adaptation)
+        }
+    }
+    func testNewShrugToggleMigratesOnceAndOffSurvivesRestart() async {
+        await MainActor.run {
+            let name="local.posturepal.tests.\(UUID().uuidString)";let defaults=UserDefaults(suiteName:name)!
+            defer {defaults.removePersistentDomain(forName:name)}
+            defaults.set(["headDown","shoulders"],forKey:"enabled.v1")
+            let model=AppModel(defaults:defaults,notificationCenter:nil);defer {model.shutdown()}
+            XCTAssertTrue(model.enabled.contains(.shrug))
+            XCTAssertFalse(model.enabled.contains(.lean))
+            model.enabled.remove(.shrug);model.save()
+            let reopened=AppModel(defaults:defaults,notificationCenter:nil);defer {reopened.shutdown()}
+            XCTAssertFalse(reopened.enabled.contains(.shrug))
+            XCTAssertFalse(reopened.enabled.contains(.lean))
         }
     }
     func testActivityTimerPausesDuringGuide() async {

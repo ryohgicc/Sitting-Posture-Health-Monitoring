@@ -62,7 +62,7 @@ int pp_detect(PPDetector *d,const uint8_t *rgba,int width,int height,PPBody *out
         for(uint32_t i=0;i<result.pose_count && count<capacity;i++) {
             if(result.poses[i].count<13 || !result.poses[i].landmarks)continue;
             Landmark *p=result.poses[i].landmarks;
-            out[count++]=(PPBody){point(&p[0]),point(&p[11]),point(&p[12])};
+            out[count++]=(PPBody){point(&p[0]),point(&p[11]),point(&p[12]),point(&p[7]),point(&p[8])};
         }
     } else {message(error,size,err); count=-1;}
     if(err)d->error_free(err);

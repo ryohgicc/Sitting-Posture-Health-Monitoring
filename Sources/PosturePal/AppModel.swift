@@ -83,6 +83,11 @@ final class AppModel: ObservableObject {
         }
         hasPersonalAdaptation=defaults.bool(forKey:"personalAdaptationAccepted.v1")
         if let values = defaults.stringArray(forKey: "enabled.v1") { enabled = Set(values.compactMap(Issue.init(rawValue:))) }
+        if !defaults.bool(forKey:"shrugEnabledMigrated.v1") {
+            enabled.insert(.shrug)
+            defaults.set(enabled.map(\.rawValue),forKey:"enabled.v1")
+            defaults.set(true,forKey:"shrugEnabledMigrated.v1")
+        }
         if defaults.object(forKey: "activity.v1") != nil { activityEnabled = defaults.bool(forKey: "activity.v1") }
         // Validation mode is explicit: notifications describing posture stay gated until a real trial.
         validationMode = !defaults.bool(forKey: "trialAccepted.v1")

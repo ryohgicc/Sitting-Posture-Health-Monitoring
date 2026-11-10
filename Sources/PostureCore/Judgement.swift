@@ -50,12 +50,12 @@ public struct PostureJudge {
         var active = Set<Issue>(), candidates = Set<Issue>(), deviations: [Issue:Double] = [:]
         var readings: [Issue:ThresholdReading] = [:]
         for issue in Issue.allCases {
-            guard enabled.contains(issue), let raw = metrics?[issue], let base = baseline[issue], raw.isFinite, base.isFinite else {
+            guard enabled.contains(issue), let signed = metrics?.signedDeviation(from:baseline,issue:issue) else {
                 trackers[issue] = nil; continue
             }
             var t = trackers[issue] ?? Tracker()
             // Vision reports positive pitch for nodding down; looking up must not count as head-down.
-            let deviation = issue == .headDown ? max(0, raw-base) : abs(raw-base)
+            let deviation = issue == .headDown || issue == .shrug ? max(0,signed) : abs(signed)
             let alpha = smoothing ? 1-exp(-max(0,dt)/0.8) : 1
             t.filtered = t.filtered.map { $0 + alpha*(deviation-$0) } ?? deviation
             deviations[issue] = t.filtered

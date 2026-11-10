@@ -5,7 +5,7 @@ import PostureVision
 // No camera, network or image writes. Reads only a user-specified image.
 let args = Array(CommandLine.arguments.dropFirst())
 guard let path=args.first, let image=NSImage(contentsOfFile:path) else {
-    fputs("Usage: PostureProbe image-path [--screenshot] [--multi] [--require-shoulders] [--privacy]\n",stderr); exit(2)
+    fputs("Usage: PostureProbe image-path [--screenshot] [--multi] [--require-shoulders] [--require-shrug] [--privacy]\n",stderr); exit(2)
 }
 var rect=NSRect(origin:.zero,size:image.size)
 guard let cg=image.cgImage(forProposedRect:&rect,context:nil,hints:nil) else { exit(2) }
@@ -60,10 +60,11 @@ if args.contains("--privacy") {
     guard verifyPrivacy(source:source,processed:rendered,target:center,background:CGRect(x:0.02,y:0.05,width:0.18,height:0.85)),
           edgeEnergy(blurred,box:center)/max(0.001,edgeEnergy(source,box:center)) < 0.25 else {exit(1)}
 }
-print("faces=\(result.faces) bodies=\(result.bodies) target=\(result.status.rawValue) head=\(result.metrics?.headPitch != nil) lateral=\(result.metrics?.lateral != nil) shoulders=\(result.metrics?.shoulderTilt != nil)")
+print("faces=\(result.faces) bodies=\(result.bodies) target=\(result.status.rawValue) head=\(result.metrics?.headPitch != nil) lateral=\(result.metrics?.lateral != nil) shoulders=\(result.metrics?.shoulderTilt != nil) shrug=\(result.metrics?[.shrug] != nil)")
 print(result.reason)
 guard result.metrics?.headPitch != nil, let box=result.faceBox else { exit(1) }
-if args.contains("--require-shoulders"), result.metrics?.complete != true { exit(1) }
+if args.contains("--require-shoulders"), (result.metrics?.lateral == nil || result.metrics?.shoulderTilt == nil) { exit(1) }
+if args.contains("--require-shrug"), result.metrics?[.shrug] == nil {exit(1)}
 if args.contains("--multi") {
     // A deterministic additional small face is composited in memory only, to exercise Vision + selection.
     let faceRect=CGRect(x:box.x*Double(source.width),y:(1-box.y-box.height)*Double(source.height),width:box.width*Double(source.width),height:box.height*Double(source.height))
@@ -74,7 +75,8 @@ if args.contains("--multi") {
     let multi=try analyze(composite,now:0.2)
     print("multi faces=\(multi.faces) target=\(multi.status.rawValue) head=\(multi.metrics?.headPitch != nil) lateral=\(multi.metrics?.lateral != nil) shoulders=\(multi.metrics?.shoulderTilt != nil)")
     guard multi.faces >= 2, multi.status == .locked, let newBox=multi.faceBox, abs(newBox.center.x-box.center.x) < 0.03, multi.metrics?.headPitch != nil else { exit(1) }
-    if args.contains("--require-shoulders"), multi.metrics?.complete != true { exit(1) }
+    if args.contains("--require-shoulders"), (multi.metrics?.lateral == nil || multi.metrics?.shoulderTilt == nil) { exit(1) }
+    if args.contains("--require-shrug"), multi.metrics?[.shrug] == nil {exit(1)}
     if args.contains("--privacy") {
         let privacy = PrivacyCompositor().render(image:composite,target:multi.faceBox)
         print("multi privacy target=\(privacy.targetVisible) excludedFaces=\(privacy.excludedFaces)")
