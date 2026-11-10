@@ -1,0 +1,56 @@
+native-mp-strict-latest.log
+[0/1] Planning build
+Building for debugging...
+[0/3] Compiling MediaPipeBridge MediaPipeBridge.c
+[1/5] Write swift-version--58304C5D6DBC2206.txt
+[2/5] Write Objects.LinkFileList
+[3/5] Linking PostureProbe
+[4/5] Applying PostureProbe
+Build of product 'PostureProbe' complete! (0.75s)
+I0000 00:00:1794224573.159865 18691936 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 91.7), renderer: Apple M3
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794224573.209765 18691961 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224573.219255 18691961 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224573.246824 18691964 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+faces=1 bodies=1 target=locked head=true lateral=true shoulders=true
+已锁定你，头肩可用（MediaPipe）
+multi faces=2 target=locked head=true lateral=true shoulders=true
+PASS: foreground stays locked with an additional background-sized face
+
+native-mp-strict-previous.log
+I0000 00:00:1794224622.452948 18693234 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 91.7), renderer: Apple M3
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794224622.510191 18693299 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224622.523085 18693307 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224622.553862 18693305 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+faces=1 bodies=1 target=locked head=true lateral=true shoulders=true
+已锁定你，头肩可用（MediaPipe）
+multi faces=2 target=locked head=true lateral=true shoulders=true
+PASS: foreground stays locked with an additional background-sized face
+
+native-mp-deny-network.log
+I0000 00:00:1794224622.452960 18693244 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 91.7), renderer: Apple M3
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794224622.510190 18693298 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224622.522967 18693298 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224622.553977 18693302 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+faces=1 bodies=1 target=locked head=true lateral=true shoulders=true
+已锁定你，头肩可用（MediaPipe）
+multi faces=2 target=locked head=true lateral=true shoulders=true
+PASS: foreground stays locked with an additional background-sized face
+
+packaged-native-mp.log
+I0000 00:00:1794224678.513523 18695024 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 91.7), renderer: Apple M3
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794224678.560831 18695185 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224678.567485 18695187 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794224678.587777 18695185 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+faces=1 bodies=1 target=locked head=true lateral=true shoulders=true
+已锁定你，头肩可用（MediaPipe）
+multi faces=2 target=locked head=true lateral=true shoulders=true
+PASS: foreground stays locked with an additional background-sized face
+
+missing-model-check.log
+faces=1 bodies=0 target=locked head=true lateral=false shoulders=false
+已锁定你；本地肩部模型不可用，请重新构建应用。
+

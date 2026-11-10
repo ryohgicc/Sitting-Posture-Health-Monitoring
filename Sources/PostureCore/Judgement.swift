@@ -1,0 +1,80 @@
+import Foundation
+
+public struct Preferences: Codable, Sendable {
+    public var dwell: Double
+    public var cooldown: Double
+    public var sensitivity: Double
+    public var activityInterval: Double
+    public init(dwell: Double = 20, cooldown: Double = 600, sensitivity: Double = 1, activityInterval: Double = 2700) {
+        self.dwell = [10.0,20,30].contains(dwell) ? dwell : 20
+        self.cooldown = [300.0,600,1200].contains(cooldown) ? cooldown : 600
+        self.sensitivity = [0.7,1.0,1.4].contains(sensitivity) ? sensitivity : 1
+        self.activityInterval = [1800.0,2700,3600].contains(activityInterval) ? activityInterval : 2700
+    }
+    public var validated: Preferences { Preferences(dwell: dwell, cooldown: cooldown, sensitivity: sensitivity, activityInterval: activityInterval) }
+}
+
+private struct Tracker {
+    var filtered: Double?
+    var badSince: Double?
+    var goodSince: Double?
+    var active = false
+}
+
+public struct Verdict {
+    public var active: Set<Issue>
+    public var alerts: Set<Issue>
+    public var deviations: [Issue: Double]
+}
+
+public struct PostureJudge {
+    public var baseline: PoseMetrics
+    public var preferences: Preferences
+    public var enabled = Set(Issue.allCases)
+    private var trackers: [Issue:Tracker] = [:]
+    private var lastFrame: Double?
+    private var lastAlerts: [Issue:Double] = [:]
+    private var lastAnyAlert: Double?
+    private let smoothing: Bool
+    public init(baseline: PoseMetrics, preferences: Preferences = Preferences(), smoothing: Bool = true) {
+        self.baseline = baseline; self.preferences = preferences.validated; self.smoothing = smoothing
+    }
+    public mutating func resetPending() { trackers.removeAll(); lastFrame = nil }
+    public mutating func update(_ metrics: PoseMetrics?, now: Double, muted: Bool = false) -> Verdict {
+        let dt = lastFrame.map { now-$0 } ?? 0
+        if dt > 2.5 || dt < 0 { trackers.removeAll() }
+        lastFrame = now
+        var active = Set<Issue>(), candidates = Set<Issue>(), deviations: [Issue:Double] = [:]
+        for issue in Issue.allCases {
+            guard enabled.contains(issue), let raw = metrics?[issue], let base = baseline[issue], raw.isFinite, base.isFinite else {
+                trackers[issue] = nil; continue
+            }
+            var t = trackers[issue] ?? Tracker()
+            // Vision reports positive pitch for nodding down; looking up must not count as head-down.
+            let deviation = issue == .headDown ? max(0, raw-base) : abs(raw-base)
+            let alpha = smoothing ? 1-exp(-max(0,dt)/0.8) : 1
+            t.filtered = t.filtered.map { $0 + alpha*(deviation-$0) } ?? deviation
+            deviations[issue] = t.filtered
+            let threshold = issue.threshold * preferences.sensitivity * (t.active ? 0.55 : 1)
+            if muted { t.badSince = nil; t.goodSince = nil; t.active = false }
+            else if (t.filtered ?? 0) > threshold {
+                t.goodSince = nil; t.badSince = t.badSince ?? now
+                if now-(t.badSince ?? now) >= preferences.dwell { t.active = true }
+            } else {
+                t.badSince = nil; t.goodSince = t.goodSince ?? now
+                if now-(t.goodSince ?? now) >= 3 { t.active = false }
+            }
+            if t.active {
+                active.insert(issue)
+                if now-(lastAlerts[issue] ?? -.infinity) >= preferences.cooldown { candidates.insert(issue) }
+            }
+            trackers[issue] = t
+        }
+        if muted || now-(lastAnyAlert ?? -.infinity) < 60 { candidates.removeAll() }
+        if !candidates.isEmpty {
+            lastAnyAlert = now
+            for i in candidates { lastAlerts[i] = now }
+        }
+        return Verdict(active: active, alerts: candidates, deviations: deviations)
+    }
+}

@@ -1,0 +1,10 @@
+[0/1] Planning build
+Building for debugging...
+[0/6] Write sources
+[1/6] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Compiling PosturePal CameraPipeline.swift
+[4/6] Emitting module PosturePal
+[4/7] Write Objects.LinkFileList
+[5/7] Linking PosturePal
+[6/7] Applying PosturePal
+Build complete! (1.53s)

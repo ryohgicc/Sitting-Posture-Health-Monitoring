@@ -1,0 +1,29 @@
+privacy-network-denied.log
+I0000 00:00:1794225531.699117 18722056 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 91.7), renderer: Apple M3
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794225531.764637 18722127 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794225531.848341 18722131 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794225531.975280 18722128 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+privacy ms=455.1309165544808
+privacy target=true otherFaces=0 rendered=true fallback=true
+privacy detail targetRatio=0.9349424972905859 backgroundRatio=0.05473872114262493
+faces=1 bodies=1 target=locked head=true lateral=true shoulders=true
+已锁定你，头肩可用（MediaPipe）
+multi faces=2 target=locked head=true lateral=true shoulders=true
+multi privacy target=true excludedFaces=1
+PASS: foreground stays locked with an additional background-sized face
+
+privacy-previous.log
+I0000 00:00:1794225597.381475 18724854 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 91.7), renderer: Apple M3
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794225597.434179 18724903 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794225597.449814 18724901 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794225597.476939 18724906 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+privacy ms=370.28045835904777
+privacy target=true otherFaces=0 rendered=true fallback=true
+privacy detail targetRatio=0.9424190896180582 backgroundRatio=0.05693534100974314
+faces=1 bodies=1 target=locked head=true lateral=true shoulders=true
+已锁定你，头肩可用（MediaPipe）
+multi faces=2 target=locked head=true lateral=true shoulders=true
+multi privacy target=true excludedFaces=1
+PASS: foreground stays locked with an additional background-sized face
