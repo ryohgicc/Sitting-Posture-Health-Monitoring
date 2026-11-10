@@ -116,7 +116,17 @@ struct MainView: View {
                 Text("系统通知：\(model.notificationState)")
                 HStack { Button("申请通知权限") { model.requestNotifications() }; Button("刷新权限") { model.refreshNotifications() } }
                 Text("提醒始终无声；系统勿扰可能隐藏通知。").font(.caption).foregroundStyle(.secondary)
-                Picker("持续偏离", selection: $model.preferences.dwell) { ForEach([10.0,20,30], id: \.self) { Text("\(Int($0))秒").tag($0) } }
+                HStack {
+                    Text("持续偏离")
+                    TextField("秒数",value:Binding(get:{Int(model.preferences.dwell)},set:{model.preferences.dwell=Double(min(120,max(1,$0)))}),format:.number.grouping(.never))
+                        .frame(width:65).textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("持续偏离秒数，1至120秒")
+                    Text("秒")
+                    Stepper("调整秒数",value:$model.preferences.dwell,in:1...120,step:1).labelsHidden()
+                    Button("设为5秒") {model.preferences.dwell=5}
+                }
+                Text("可配置1–120秒，默认5秒；修改后从零重新计时。只在持续超线后形成事件，通知仍受验证模式和冷却限制。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Picker("同类冷却", selection: $model.preferences.cooldown) { ForEach([300.0,600,1200], id: \.self) { Text("\(Int($0/60))分钟").tag($0) } }
                 Picker("灵敏度", selection: $model.preferences.sensitivity) { Text("低").tag(1.4); Text("标准").tag(1.0); Text("高").tag(0.7) }
                 Text("当前提醒线：头部 \(Issue.headDown.formatted(Issue.headDown.entryThreshold(sensitivity:model.preferences.sensitivity))) · 左右 \(Issue.lean.formatted(Issue.lean.entryThreshold(sensitivity:model.preferences.sensitivity))) · 肩线 \(Issue.shoulders.formatted(Issue.shoulders.entryThreshold(sensitivity:model.preferences.sensitivity)))。均相对校准参考，非医学标准。")
@@ -148,7 +158,7 @@ struct MainView: View {
                 Text("头部使用 Apple Vision，肩部使用随应用附带的 MediaPipe 本地模型。无需联网或 Python。")
                 Text("有效画面：\(model.validFrames) / \(model.totalFrames) 帧（当前开启周期）")
                 if model.totalFrames > 0 { Text(String(format: "完整指标可用率 %.1f%%", Double(model.validFrames)/Double(model.totalFrames)*100)) }
-                Text("1. 开启预览，让头部和双肩完整入镜，稳定校准约10秒。\n2. 正常办公5分钟，完整指标可用率目标≥90%。\n3. 低头、左右偏斜、肩线变化各测试5次，每次保持超过20秒再恢复。\n4. 正常打字、喝水、转头、后靠共30分钟，误事件目标≤1次。\n5. 未通过的指标请关闭并记录；不能因此宣称整个首版已经通过验收。")
+                Text("1. 开启预览，让头部和双肩完整入镜，稳定校准约10秒。\n2. 正常办公5分钟，完整指标可用率目标≥90%。\n3. 低头、左右偏斜、肩线变化各测试5次，每次保持超过所设持续时间（当前\(Int(model.preferences.dwell))秒）再恢复。\n4. 正常打字、喝水、转头、后靠共30分钟，误事件目标≤1次。\n5. 未通过的指标请关闭并记录；不能因此宣称整个首版已经通过验收。")
                 Text("头部俯仰使用面部角度，按系统定义的向下方向比较个人基线；实际方向表现与误报仍待验证，提示保持中性。圆肩、二郎腿、骨盆和腰椎不在检测范围内。已锁定目标后会忽略背景人脸；遮挡、目标丢失或多人靠近无法区分时暂停，需重新锁定。").foregroundStyle(.secondary)
                 if model.validationMode {
                     Button("我已试用，启用姿态系统通知") { model.acceptTrial(); model.requestNotifications() }.buttonStyle(.borderedProminent)

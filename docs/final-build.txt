@@ -1,27 +1,27 @@
 [0/1] Planning build
 Building for debugging...
 [0/7] Write swift-version--58304C5D6DBC2206.txt
-[2/15] Compiling PostureCore OverlayStabilizer.swift
-[3/15] Compiling PostureCore ThresholdReading.swift
-[4/15] Compiling PostureCore Geometry.swift
-[5/15] Emitting module PostureCore
-[6/15] Compiling PostureCore SubjectTracking.swift
-[7/15] Compiling PostureCore Session.swift
-[8/15] Compiling PostureCore Judgement.swift
-[9/15] Compiling PostureCore PrivacySelection.swift
+[2/15] Compiling PostureCore ThresholdReading.swift
+[3/15] Compiling PostureCore Session.swift
+[4/15] Compiling PostureCore OverlayStabilizer.swift
+[5/15] Compiling PostureCore Judgement.swift
+[6/15] Compiling PostureCore PrivacySelection.swift
+[7/15] Compiling PostureCore Geometry.swift
+[8/15] Emitting module PostureCore
+[9/15] Compiling PostureCore SubjectTracking.swift
 [10/19] Compiling PostureVision VisionAnalyzer.swift
-[11/19] Emitting module PostureVision
-[12/19] Compiling PostureVision MediaPipePose.swift
-[13/19] Compiling PostureVision PrivacyCompositor.swift
-[14/26] Compiling PostureProbe main.swift
-[15/26] Emitting module PostureProbe
+[11/19] Compiling PostureVision MediaPipePose.swift
+[12/19] Compiling PostureVision PrivacyCompositor.swift
+[13/19] Emitting module PostureVision
+[14/26] Emitting module PostureProbe
+[15/26] Compiling PostureProbe main.swift
 [15/25] Linking PostureProbe
 [16/25] Applying PostureProbe
 [18/25] Compiling PosturePal Main.swift
 [19/25] Compiling PosturePal AppModel.swift
 [20/25] Compiling PosturePal CameraPipeline.swift
-[21/25] Compiling PosturePal Views.swift
-[22/25] Emitting module PosturePal
+[21/25] Emitting module PosturePal
+[22/25] Compiling PosturePal Views.swift
 [22/24] Linking PosturePal
 [23/24] Applying PosturePal
-Build complete! (2.21s)
+Build complete! (2.46s)

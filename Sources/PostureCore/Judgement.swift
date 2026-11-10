@@ -5,8 +5,8 @@ public struct Preferences: Codable, Sendable {
     public var cooldown: Double
     public var sensitivity: Double
     public var activityInterval: Double
-    public init(dwell: Double = 20, cooldown: Double = 600, sensitivity: Double = 1, activityInterval: Double = 2700) {
-        self.dwell = [10.0,20,30].contains(dwell) ? dwell : 20
+    public init(dwell: Double = 5, cooldown: Double = 600, sensitivity: Double = 1, activityInterval: Double = 2700) {
+        self.dwell = dwell.isFinite ? min(120,max(1,dwell.rounded())) : 5
         self.cooldown = [300.0,600,1200].contains(cooldown) ? cooldown : 600
         self.sensitivity = [0.7,1.0,1.4].contains(sensitivity) ? sensitivity : 1
         self.activityInterval = [1800.0,2700,3600].contains(activityInterval) ? activityInterval : 2700

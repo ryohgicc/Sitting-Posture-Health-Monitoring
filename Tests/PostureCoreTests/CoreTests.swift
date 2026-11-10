@@ -20,7 +20,7 @@ final class CoreTests: XCTestCase {
     }
 
     func testDwellRecoveryAndPerTypeCooldown() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         for t in 0..<20 { XCTAssertTrue(j.update(down, now: Double(t)).alerts.isEmpty) }
         XCTAssertEqual(j.update(down, now: 20).alerts, [.headDown])
         XCTAssertTrue(j.update(down, now: 21).alerts.isEmpty)
@@ -30,7 +30,7 @@ final class CoreTests: XCTestCase {
     }
 
     func testMissingMetricResetsOnlyItsOwnPendingDwell() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         for t in 0...15 { _ = j.update(down, now: Double(t)) }
         _ = j.update(PoseMetrics(headPitch: nil, lateral: 0.5, shoulderTilt: 0), now: 16)
         for t in 17...35 { XCTAssertTrue(j.update(down, now: Double(t)).alerts.isEmpty) }
@@ -38,13 +38,13 @@ final class CoreTests: XCTestCase {
     }
 
     func testLongFrameGapDoesNotCountTowardDwell() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         _ = j.update(down, now: 0)
         XCTAssertTrue(j.update(down, now: 60).alerts.isEmpty)
     }
 
     func testSnoozeDiscardsStaleDwell() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         for t in 0...19 { _ = j.update(down, now: Double(t), muted: true) }
         XCTAssertTrue(j.update(down, now: 20, muted: false).alerts.isEmpty)
     }
@@ -71,7 +71,7 @@ final class CoreTests: XCTestCase {
 
     func testPreferencesClampCorruptedValues() {
         let p = Preferences(dwell: -1, cooldown: .nan, sensitivity: 100, activityInterval: -20)
-        XCTAssertEqual(p.dwell, 20)
+        XCTAssertEqual(p.dwell, 1)
         XCTAssertEqual(p.cooldown, 600)
         XCTAssertEqual(p.sensitivity, 1)
         XCTAssertEqual(p.activityInterval, 2700)
@@ -80,7 +80,7 @@ final class CoreTests: XCTestCase {
 
 extension CoreTests {
     func testHeadDownDoesNotClassifyLookingUpAsDown() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         let up = PoseMetrics(headPitch: -0.4, lateral: 0, shoulderTilt: 0)
         for t in 0...25 { XCTAssertTrue(j.update(up, now: Double(t)).active.isEmpty) }
     }
@@ -92,7 +92,7 @@ extension CoreTests {
         XCTAssertNil(c.result(now: 10))
     }
     func testSimultaneousAlertsMergeAndNewTypeWaitsSixtySeconds() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         for t in 0...19 { _ = j.update(down, now: Double(t)) }
         XCTAssertEqual(j.update(down, now: 20).alerts, [.headDown])
         let both = PoseMetrics(headPitch: 0.3, lateral: 0.5, shoulderTilt: 0)
@@ -100,7 +100,7 @@ extension CoreTests {
         XCTAssertEqual(j.update(both, now: 80).alerts, [.lean])
     }
     func testDisabledMetricAndFrameLossDoNotReportGoodOrActive() {
-        var j = PostureJudge(baseline: baseline, smoothing: false)
+        var j = PostureJudge(baseline: baseline, preferences:Preferences(dwell:20), smoothing: false)
         for t in 0...20 { _ = j.update(down, now: Double(t)) }
         j.enabled.remove(.headDown)
         XCTAssertTrue(j.update(down, now: 21).active.isEmpty)

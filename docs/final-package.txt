@@ -9,7 +9,7 @@ Building for production...
 [8/10] Compiling PosturePal AppModel.swift
 [8/10] Write Objects.LinkFileList
 [9/10] Linking PosturePal
-Build complete! (5.41s)
+Build complete! (5.43s)
 /Users/apple/Documents/Codex/2026-11-09/n-j-d/outputs/PosturePal/dist/坐姿搭子.app/Contents/Resources/Models/libmediapipe.dylib: replacing existing signature
 /Users/apple/Documents/Codex/2026-11-09/n-j-d/outputs/PosturePal/dist/坐姿搭子.app/Contents/Info.plist: OK
 /Users/apple/Documents/Codex/2026-11-09/n-j-d/outputs/PosturePal/dist/坐姿搭子.app: replacing existing signature

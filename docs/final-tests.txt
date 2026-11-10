@@ -1,35 +1,29 @@
 [0/1] Planning build
 Building for debugging...
-[0/10] Write sources
-[2/10] Write swift-version--58304C5D6DBC2206.txt
-[4/12] Emitting module PostureCore
-[5/12] Compiling PostureCore ThresholdReading.swift
-[6/13] Compiling PostureCore Judgement.swift
-[7/20] Emitting module PostureCoreTests
-[8/20] Compiling PostureCoreTests ThresholdTests.swift
-[9/20] Compiling PostureVision VisionAnalyzer.swift
-[10/20] Emitting module PostureVision
-[11/20] Compiling PostureVision PrivacyCompositor.swift
-[12/20] Compiling PostureVision MediaPipePose.swift
-[12/20] Write Objects.LinkFileList
-[14/27] Emitting module PostureProbe
-[15/27] Compiling PostureProbe main.swift
-[15/27] Write Objects.LinkFileList
-[16/27] Linking PosturePalPackageTests
-[17/27] Linking PostureProbe
-[18/27] Applying PostureProbe
-[20/27] Compiling PosturePal Main.swift
-[21/27] Emitting module PosturePal
-[22/27] Compiling PosturePal CameraPipeline.swift
-[23/27] Compiling PosturePal AppModel.swift
-[24/27] Compiling PosturePal Views.swift
-[24/27] Write Objects.LinkFileList
-[25/27] Linking PosturePal
-[26/27] Applying PosturePal
-Build complete! (2.82s)
-Test Suite 'All tests' started at 2026-11-10 11:46:58.985.
-Test Suite 'PosturePalPackageTests.xctest' started at 2026-11-10 11:46:58.985.
-Test Suite 'CoreTests' started at 2026-11-10 11:46:58.985.
+[0/9] Write sources
+[3/9] Write swift-version--58304C5D6DBC2206.txt
+[5/11] Emitting module PostureCore
+[6/11] Compiling PostureCore Judgement.swift
+[6/14] Write Objects.LinkFileList
+[8/21] Compiling PostureCoreTests ThresholdTests.swift
+[9/21] Compiling PostureCoreTests DwellTests.swift
+[10/21] Emitting module PostureCoreTests
+[11/21] Compiling PostureCoreTests CoreTests.swift
+[11/22] Write Objects.LinkFileList
+[12/22] Linking PostureProbe
+[13/22] Applying PostureProbe
+[15/22] Compiling PosturePal Main.swift
+[15/22] Linking PosturePalPackageTests
+[17/22] Compiling PosturePal AppModel.swift
+[18/22] Emitting module PosturePal
+[19/22] Compiling PosturePal Views.swift
+[19/22] Write Objects.LinkFileList
+[20/22] Linking PosturePal
+[21/22] Applying PosturePal
+Build complete! (2.12s)
+Test Suite 'All tests' started at 2026-11-10 11:53:22.104.
+Test Suite 'PosturePalPackageTests.xctest' started at 2026-11-10 11:53:22.105.
+Test Suite 'CoreTests' started at 2026-11-10 11:53:22.105.
 Test Case '-[PostureCoreTests.CoreTests testActivityClockPauseAndReset]' started.
 Test Case '-[PostureCoreTests.CoreTests testActivityClockPauseAndReset]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.CoreTests testCalibrationRequiresDurationCoverageAndStability]' started.
@@ -56,9 +50,16 @@ Test Case '-[PostureCoreTests.CoreTests testSimultaneousAlertsMergeAndNewTypeWai
 Test Case '-[PostureCoreTests.CoreTests testSimultaneousAlertsMergeAndNewTypeWaitsSixtySeconds]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.CoreTests testSnoozeDiscardsStaleDwell]' started.
 Test Case '-[PostureCoreTests.CoreTests testSnoozeDiscardsStaleDwell]' passed (0.000 seconds).
-Test Suite 'CoreTests' passed at 2026-11-10 11:46:58.988.
+Test Suite 'CoreTests' passed at 2026-11-10 11:53:22.108.
 	 Executed 13 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
-Test Suite 'LifecycleTests' started at 2026-11-10 11:46:58.988.
+Test Suite 'DwellTests' started at 2026-11-10 11:53:22.108.
+Test Case '-[PostureCoreTests.DwellTests testCustomDurationPersistsAndInvalidValuesAreBounded]' started.
+Test Case '-[PostureCoreTests.DwellTests testCustomDurationPersistsAndInvalidValuesAreBounded]' passed (0.000 seconds).
+Test Case '-[PostureCoreTests.DwellTests testDefaultAlertsAtFiveSecondsAndCustomDurationAtSeven]' started.
+Test Case '-[PostureCoreTests.DwellTests testDefaultAlertsAtFiveSecondsAndCustomDurationAtSeven]' passed (0.000 seconds).
+Test Suite 'DwellTests' passed at 2026-11-10 11:53:22.108.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'LifecycleTests' started at 2026-11-10 11:53:22.108.
 Test Case '-[PostureCoreTests.LifecycleTests testGenerationRejectsOldStartAndAcceptsLatest]' started.
 Test Case '-[PostureCoreTests.LifecycleTests testGenerationRejectsOldStartAndAcceptsLatest]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.LifecycleTests testManualActivityResetCancelsPendingActivity]' started.
@@ -81,34 +82,34 @@ Test Case '-[PostureCoreTests.LifecycleTests testUnstableOneMetricDoesNotDestroy
 Test Case '-[PostureCoreTests.LifecycleTests testUnstableOneMetricDoesNotDestroyOtherCalibration]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.LifecycleTests testWatchdogIncludesTimeBeforeFirstFrame]' started.
 Test Case '-[PostureCoreTests.LifecycleTests testWatchdogIncludesTimeBeforeFirstFrame]' passed (0.000 seconds).
-Test Suite 'LifecycleTests' passed at 2026-11-10 11:46:58.989.
+Test Suite 'LifecycleTests' passed at 2026-11-10 11:53:22.109.
 	 Executed 11 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
-Test Suite 'OverlayTests' started at 2026-11-10 11:46:58.989.
+Test Suite 'OverlayTests' started at 2026-11-10 11:53:22.109.
 Test Case '-[PostureCoreTests.OverlayTests testMissingOrLongGapNeverReusesOldSkeleton]' started.
 Test Case '-[PostureCoreTests.OverlayTests testMissingOrLongGapNeverReusesOldSkeleton]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.OverlayTests testRealMovementFollowsWithoutLongFreeze]' started.
 Test Case '-[PostureCoreTests.OverlayTests testRealMovementFollowsWithoutLongFreeze]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.OverlayTests testSmallStationaryNoiseDoesNotMoveOverlay]' started.
 Test Case '-[PostureCoreTests.OverlayTests testSmallStationaryNoiseDoesNotMoveOverlay]' passed (0.000 seconds).
-Test Suite 'OverlayTests' passed at 2026-11-10 11:46:58.990.
+Test Suite 'OverlayTests' passed at 2026-11-10 11:53:22.110.
 	 Executed 3 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'PreviewModeTests' started at 2026-11-10 11:46:58.990.
+Test Suite 'PreviewModeTests' started at 2026-11-10 11:53:22.110.
 Test Case '-[PostureVisionTests.PreviewModeTests testDefaultOnNeverFallsBackToSourceWithoutTarget]' started.
-Test Case '-[PostureVisionTests.PreviewModeTests testDefaultOnNeverFallsBackToSourceWithoutTarget]' passed (0.043 seconds).
+Test Case '-[PostureVisionTests.PreviewModeTests testDefaultOnNeverFallsBackToSourceWithoutTarget]' passed (0.049 seconds).
 Test Case '-[PostureVisionTests.PreviewModeTests testExplicitOffPassesThroughCameraImage]' started.
-Test Case '-[PostureVisionTests.PreviewModeTests testExplicitOffPassesThroughCameraImage]' passed (0.008 seconds).
-Test Suite 'PreviewModeTests' passed at 2026-11-10 11:46:59.040.
-	 Executed 2 tests, with 0 failures (0 unexpected) in 0.050 (0.050) seconds
-Test Suite 'PrivacyTests' started at 2026-11-10 11:46:59.040.
+Test Case '-[PostureVisionTests.PreviewModeTests testExplicitOffPassesThroughCameraImage]' passed (0.009 seconds).
+Test Suite 'PreviewModeTests' passed at 2026-11-10 11:53:22.168.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.059 (0.059) seconds
+Test Suite 'PrivacyTests' started at 2026-11-10 11:53:22.168.
 Test Case '-[PostureCoreTests.PrivacyTests testAmbiguousAndWeakMasksNeverRevealPeople]' started.
 Test Case '-[PostureCoreTests.PrivacyTests testAmbiguousAndWeakMasksNeverRevealPeople]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.PrivacyTests testOnlyTargetCoveringInstanceSelected]' started.
 Test Case '-[PostureCoreTests.PrivacyTests testOnlyTargetCoveringInstanceSelected]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.PrivacyTests testOverlappingBystanderIsNotTreatedAsTarget]' started.
 Test Case '-[PostureCoreTests.PrivacyTests testOverlappingBystanderIsNotTreatedAsTarget]' passed (0.000 seconds).
-Test Suite 'PrivacyTests' passed at 2026-11-10 11:46:59.040.
+Test Suite 'PrivacyTests' passed at 2026-11-10 11:53:22.169.
 	 Executed 3 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'SubjectTrackingTests' started at 2026-11-10 11:46:59.040.
+Test Suite 'SubjectTrackingTests' started at 2026-11-10 11:53:22.169.
 Test Case '-[PostureCoreTests.SubjectTrackingTests testArrayOrderAndLargerBystanderDoNotSwitchLockedSubject]' started.
 Test Case '-[PostureCoreTests.SubjectTrackingTests testArrayOrderAndLargerBystanderDoNotSwitchLockedSubject]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.SubjectTrackingTests testBodyAssociationRejectsBackgroundBodyAndNeedsUniqueMatch]' started.
@@ -135,9 +136,9 @@ Test Case '-[PostureCoreTests.SubjectTrackingTests testSmallBackgroundFacesCanno
 Test Case '-[PostureCoreTests.SubjectTrackingTests testSmallBackgroundFacesCannotInitiallyAcquire]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.SubjectTrackingTests testTrackingGapRequiresExplicitReset]' started.
 Test Case '-[PostureCoreTests.SubjectTrackingTests testTrackingGapRequiresExplicitReset]' passed (0.000 seconds).
-Test Suite 'SubjectTrackingTests' passed at 2026-11-10 11:46:59.041.
+Test Suite 'SubjectTrackingTests' passed at 2026-11-10 11:53:22.170.
 	 Executed 13 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
-Test Suite 'ThresholdTests' started at 2026-11-10 11:46:59.041.
+Test Suite 'ThresholdTests' started at 2026-11-10 11:53:22.170.
 Test Case '-[PostureCoreTests.ThresholdTests testDisplayThresholdMatchesSensitivityAndUnits]' started.
 Test Case '-[PostureCoreTests.ThresholdTests testDisplayThresholdMatchesSensitivityAndUnits]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.ThresholdTests testEightyPercentIsApproachingAndOverThresholdUsesRealDwell]' started.
@@ -150,12 +151,12 @@ Test Case '-[PostureCoreTests.ThresholdTests testRecoveryUsesLowerBoundaryAndThr
 Test Case '-[PostureCoreTests.ThresholdTests testRecoveryUsesLowerBoundaryAndThreeSeconds]' passed (0.000 seconds).
 Test Case '-[PostureCoreTests.ThresholdTests testRoundedPercentRetainsWhichSideOfLine]' started.
 Test Case '-[PostureCoreTests.ThresholdTests testRoundedPercentRetainsWhichSideOfLine]' passed (0.000 seconds).
-Test Suite 'ThresholdTests' passed at 2026-11-10 11:46:59.042.
+Test Suite 'ThresholdTests' passed at 2026-11-10 11:53:22.171.
 	 Executed 6 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
-Test Suite 'PosturePalPackageTests.xctest' passed at 2026-11-10 11:46:59.042.
-	 Executed 51 tests, with 0 failures (0 unexpected) in 0.056 (0.057) seconds
-Test Suite 'All tests' passed at 2026-11-10 11:46:59.042.
-	 Executed 51 tests, with 0 failures (0 unexpected) in 0.056 (0.057) seconds
+Test Suite 'PosturePalPackageTests.xctest' passed at 2026-11-10 11:53:22.171.
+	 Executed 53 tests, with 0 failures (0 unexpected) in 0.065 (0.066) seconds
+Test Suite 'All tests' passed at 2026-11-10 11:53:22.171.
+	 Executed 53 tests, with 0 failures (0 unexpected) in 0.065 (0.066) seconds
 􀟈  Test run started.
 􀄵  Testing Library Version: 124.4
 􀄵  Target Platform: arm64e-apple-macos14.0
