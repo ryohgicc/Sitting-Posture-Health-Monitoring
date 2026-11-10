@@ -32,6 +32,7 @@ final class CameraPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     private let previewLock = NSLock()
     private var previewEnabled = false
     private var blurEnabled = true
+    private var faceBlurEnabled = true
     private var previewRevision = 0
     @discardableResult
     func setPreviewEnabled(_ enabled: Bool) -> Int {
@@ -43,9 +44,13 @@ final class CameraPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         previewLock.lock(); defer {previewLock.unlock()}
         blurEnabled=enabled;previewRevision += 1;return previewRevision
     }
-    private var previewOptions: (visible:Bool,blur:Bool,revision:Int) {
+    func setFaceBlur(_ enabled: Bool) -> Int {
         previewLock.lock(); defer {previewLock.unlock()}
-        return (previewEnabled,blurEnabled,previewRevision)
+        faceBlurEnabled=enabled;previewRevision += 1;return previewRevision
+    }
+    private var previewOptions: (visible:Bool,blur:Bool,faceBlur:Bool,revision:Int) {
+        previewLock.lock(); defer {previewLock.unlock()}
+        return (previewEnabled,blurEnabled,faceBlurEnabled,previewRevision)
     }
     private let imageContext = CIContext(options:[.cacheIntermediates:false])
     private var frameGeneration = -1
@@ -162,7 +167,7 @@ final class CameraPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
                 let result = try analyzer.analyze(handler:VNImageRequestHandler(cvPixelBuffer:buffer,orientation:.up),width:w,height:h,now:now,image:cgImage)
                 guard current(ticket) else { return }
                 let options=previewOptions
-                let processed = options.visible ? cgImage.map { privacy.render(image:$0,target:result.status == .locked ? result.faceBox : nil,blurEnabled:options.blur,detectedFaces:result.faceBoxes) } : nil
+                let processed = options.visible ? cgImage.map { privacy.render(image:$0,target:result.status == .locked ? result.faceBox : nil,blurEnabled:options.blur,faceBlurEnabled:options.faceBlur,detectedFaces:result.faceBoxes) } : nil
                 guard current(ticket), ProcessInfo.processInfo.systemUptime-now < 3 else { return }
                 emit(CaptureFrame(previewImage:processed?.image,previewTargetVisible:processed?.targetVisible ?? false,previewRevision:options.revision,metrics:result.metrics,points:result.points,reason:result.reason,timestamp:now,subjectBox:result.faceBox,sourceAspect:w/h,newTarget:result.newLock),ticket)
             } catch {

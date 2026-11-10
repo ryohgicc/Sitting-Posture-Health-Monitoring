@@ -49,6 +49,33 @@ final class PreviewLifecycleTests: XCTestCase {
             XCTAssertTrue(model.previewImage === image)
         }
     }
+    func testFaceBlurPersistsAndRejectsPreviewFromBeforeToggle() async throws {
+        try await MainActor.run {
+            let name="local.posturepal.tests.\(UUID().uuidString)";let defaults=UserDefaults(suiteName:name)!
+            defer {defaults.removePersistentDomain(forName:name)}
+            var time=100.0
+            let model=AppModel(defaults:defaults,notificationCenter:nil,time:{time});defer {model.shutdown()}
+            XCTAssertTrue(model.faceBlur)
+            model.setWindowVisible(true);model.capturing=true;model.requested=true
+            let oldRevision=model.camera.setPreviewEnabled(true)
+            let ctx=try XCTUnwrap(CGContext(data:nil,width:8,height:8,bitsPerComponent:8,bytesPerRow:0,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
+            let image=try XCTUnwrap(ctx.makeImage())
+            model.previewImage=image;model.previewTargetVisible=true
+            model.faceBlur=false
+            XCTAssertNil(model.previewImage);XCTAssertFalse(model.previewTargetVisible)
+            XCTAssertFalse(defaults.bool(forKey:"faceBlur.v1"))
+            time += 0.2
+            model.consume(CaptureFrame(previewImage:image,previewTargetVisible:true,previewRevision:oldRevision,metrics:nil,points:[],reason:"旧帧",timestamp:time))
+            XCTAssertNil(model.previewImage)
+            let restored=AppModel(defaults:defaults,notificationCenter:nil);defer {restored.shutdown()}
+            XCTAssertFalse(restored.faceBlur)
+            model.faceBlur=true
+            let currentRevision=model.camera.setPreviewEnabled(true)
+            time += 0.2
+            model.consume(CaptureFrame(previewImage:image,previewTargetVisible:true,previewRevision:currentRevision,metrics:nil,points:[],reason:"新帧",timestamp:time))
+            XCTAssertTrue(model.previewImage === image)
+        }
+    }
     func testPreviewVisibilityRevisionRejectsPriorFrameWhenReopened() async {
         await MainActor.run {
             let pipeline=CameraPipeline()

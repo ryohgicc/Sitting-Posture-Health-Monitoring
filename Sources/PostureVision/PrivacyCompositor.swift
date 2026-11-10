@@ -10,12 +10,43 @@ public struct PrivatePreview {
     public let excludedFaces: Int
 }
 
-/// Serial, frame-local processing. Raw passthrough requires explicit blur opt-out.
+/// Serial, frame-local processing. Raw passthrough requires both blur modes off.
 public final class PrivacyCompositor {
     private let context = CIContext(options: [.cacheIntermediates: false])
     public init() {}
 
-    public func render(image: CGImage, target: SubjectBox?, blurEnabled: Bool = true, detectedFaces: [SubjectBox]? = nil) -> PrivatePreview {
+    public func render(image: CGImage, target: SubjectBox?, blurEnabled: Bool = true, faceBlurEnabled: Bool = false, detectedFaces: [SubjectBox]? = nil) -> PrivatePreview {
+        guard faceBlurEnabled else { return backgroundPreview(image:image,target:target,blurEnabled:blurEnabled,detectedFaces:detectedFaces) }
+        let source=CIImage(cgImage:image), extent=source.extent
+        let blurred=source.clampedToExtent().applyingFilter("CIGaussianBlur",parameters:[kCIInputRadiusKey:max(28,extent.width*0.065)]).cropped(to:extent)
+        func fallback() -> PrivatePreview {
+            PrivatePreview(image:context.createCGImage(blurred,from:extent),targetVisible:false,excludedFaces:0)
+        }
+        let boxes: [SubjectBox]
+        if let detectedFaces { boxes=detectedFaces }
+        else {
+            let request=VNDetectFaceRectanglesRequest()
+            do { try VNImageRequestHandler(cgImage:image,orientation:.up).perform([request]) }
+            catch { return fallback() }
+            boxes=(request.results ?? []).map { face in
+                let b=face.boundingBox
+                return SubjectBox(x:b.minX,y:b.minY,width:b.width,height:b.height)
+            }
+        }
+        guard !boxes.isEmpty, boxes.allSatisfy(\.valid) else { return fallback() }
+        let base=backgroundPreview(image:image,target:target,blurEnabled:blurEnabled,detectedFaces:boxes)
+        guard let baseImage=base.image else { return fallback() }
+        var mask=CIImage(color:.black).cropped(to:extent)
+        // Expand fresh face boxes; never preserve the selected user's face in this mode.
+        for b in boxes {
+            let rect=CGRect(x:(b.x-b.width*0.35)*extent.width,y:(b.y-b.height*0.35)*extent.height,width:b.width*1.7*extent.width,height:b.height*1.7*extent.height).intersection(extent)
+            mask=CIImage(color:.white).cropped(to:rect).composited(over:mask)
+        }
+        let result=blurred.applyingFilter("CIBlendWithMask",parameters:[kCIInputBackgroundImageKey:CIImage(cgImage:baseImage),kCIInputMaskImageKey:mask])
+        return PrivatePreview(image:context.createCGImage(result,from:extent),targetVisible:base.targetVisible,excludedFaces:base.excludedFaces)
+    }
+
+    private func backgroundPreview(image: CGImage, target: SubjectBox?, blurEnabled: Bool, detectedFaces: [SubjectBox]?) -> PrivatePreview {
         if !blurEnabled { return PrivatePreview(image:image,targetVisible:false,excludedFaces:0) }
         let source = CIImage(cgImage: image), extent = source.extent
         let background = source.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: max(28, extent.width*0.065)]).cropped(to: extent)

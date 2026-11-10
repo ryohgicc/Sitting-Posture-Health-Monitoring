@@ -80,7 +80,9 @@ struct MainView: View {
                 }
                 Toggle("背景模糊（应用内）", isOn: $model.backgroundBlur)
                     .help("使用系统摄像头效果时可关闭，减少应用分割开销；选择会自动保存。")
-                Text((model.backgroundBlur ? "应用背景模糊已开启。" + (model.capturing && model.showPreview && !model.previewTargetVisible ? "尚未确认人物轮廓，预览全幅模糊或留空。" : "") : "应用背景模糊已关闭，显示摄像头画面；可使用系统摄像头效果。") + "不录像、不保存。")
+                Toggle("面部模糊（应用内）", isOn: $model.faceBlur)
+                    .help("模糊预览中所有检出人脸，包括你本人；不影响坐姿检测，选择自动保存。")
+                Text((model.faceBlur ? "面部模糊已开启；无人脸可用时全幅模糊。" : "面部模糊已关闭。") + (model.backgroundBlur ? "背景模糊已开启。" + (model.capturing && model.showPreview && !model.previewTargetVisible ? "尚未确认人物轮廓，预览全幅模糊或留空。" : "") : "背景模糊已关闭，可使用系统摄像头效果。") + "仅处理本应用预览，不录像、不保存。")
                     .font(.caption).foregroundStyle(.secondary)
                 Text(model.reason).foregroundStyle(.secondary).textSelection(.enabled)
                 if model.adaptation != nil {

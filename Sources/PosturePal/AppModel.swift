@@ -44,6 +44,13 @@ final class AppModel: ObservableObject {
             previewImage=nil;previewTargetVisible=false
         }
     }
+    @Published var faceBlur = true {
+        didSet {
+            defaults.set(faceBlur,forKey:"faceBlur.v1")
+            previewRevision=camera.setFaceBlur(faceBlur)
+            previewImage=nil;previewTargetVisible=false
+        }
+    }
     private var previewRevision = 0
     @Published private(set) var windowVisible = false
     @Published private(set) var dashboardVisible = true
@@ -74,6 +81,8 @@ final class AppModel: ObservableObject {
         self.defaults=defaults; self.notificationCenter=notificationCenter; self.time=time
         backgroundBlur=defaults.object(forKey:"backgroundBlur.v1") == nil ? true : defaults.bool(forKey:"backgroundBlur.v1")
         previewRevision=camera.setBackgroundBlur(backgroundBlur)
+        faceBlur=defaults.object(forKey:"faceBlur.v1") == nil ? true : defaults.bool(forKey:"faceBlur.v1")
+        previewRevision=camera.setFaceBlur(faceBlur)
         if let data = defaults.data(forKey: "preferences.v1"), let p = try? JSONDecoder().decode(Preferences.self, from: data) { preferences = p.validated }
         if let data = defaults.data(forKey: "baseline.v1"), let b = try? JSONDecoder().decode(PoseMetrics.self, from: data), b.usable,
            abs(b.headPitch ?? 0) <= .pi/2, abs(b.lateral ?? 0) < 2, abs(b.shoulderTilt ?? 0) < .pi/2 {
